@@ -859,11 +859,15 @@ Ask me about: safety, activities, health impacts, best times, or protection tips
         Returns:
             List of personalized tips
         """
-        tips = []
-        
-        # Dominant pollutant
-        dominant = max(pollutants.items(), key=lambda x: x[1])
-        pollutant_name = dominant[0].upper()
+        try:
+            tips = []
+            
+            # Dominant pollutant (with fallback)
+            if not pollutants or len(pollutants) == 0:
+                pollutants = {'pm25': aqi * 0.6}  # Default estimate
+            
+            dominant = max(pollutants.items(), key=lambda x: x[1])
+            pollutant_name = dominant[0].upper()
         
         # AQI-based tips
         if aqi > 250:
@@ -923,13 +927,24 @@ Ask me about: safety, activities, health impacts, best times, or protection tips
             tips.append("👴 Seniors: Elderly are high-risk. Rest frequently, stay hydrated.")
             
         # Time-based tips
-        hour = datetime.now().hour
-        if 6 <= hour <= 9 and aqi < 100:
-            tips.append("🌅 Morning Freshness: Best air quality of the day. Perfect for morning walks!")
-        elif 18 <= hour <= 21 and aqi > 100:
-            tips.append("🌆 Evening Traffic: Rush hour increases pollution. Stay indoors if possible.")
+            hour = datetime.now().hour
+            if 6 <= hour <= 9 and aqi < 100:
+                tips.append("🌅 Morning Freshness: Best air quality of the day. Perfect for morning walks!")
+            elif 18 <= hour <= 21 and aqi > 100:
+                tips.append("🌆 Evening Traffic: Rush hour increases pollution. Stay indoors if possible.")
+                
+            return tips[:8]  # Return top 8 tips
             
-        return tips[:8]  # Return top 8 tips
+        except Exception as e:
+            logger.error(f"Error generating tips: {e}")
+            # Fallback: Return basic tips based on AQI
+            if aqi > 150:
+                return ["🔴 Poor air quality. Stay indoors.", "😷 Wear N95 mask if going outside."]
+            elif aqi > 100:
+                return ["🟡 Moderate air quality. Limit prolonged exposure.", "⏱️ Exercise during cleaner hours."]
+            else:
+                return ["✅ Good air quality. Enjoy outdoor activities!"]
+            return []
 
 
 class SmartQAEngine:
@@ -1998,6 +2013,10 @@ class UniversalQueryHandler:
         self.kaggle_db = None
         if KAGGLE_AVAILABLE:
             try:
+                # Ensure data directory exists
+                import os
+                os.makedirs("data/kaggle", exist_ok=True)
+                
                 self.kaggle_manager = KaggleAQIDataset()
                 import pickle
                 from pathlib import Path
@@ -2006,8 +2025,11 @@ class UniversalQueryHandler:
                     with open(cache_file, 'rb') as f:
                         self.kaggle_db = pickle.load(f)
                 else:
+                    logger.info("Building Kaggle recommendations database (first run)...")
                     self.kaggle_db = self.kaggle_manager.build_recommendations_database()
                 logger.info("✓ Universal query handler with Kaggle data initialized")
+            except ImportError:
+                logger.warning("Kaggle dataset module not available (optional feature)")
             except Exception as e:
                 logger.warning(f"Kaggle integration unavailable: {e}")
         
