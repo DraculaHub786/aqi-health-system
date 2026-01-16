@@ -18,7 +18,7 @@ nlp_explainer = NLPExplainer()
 
 # Multiple API sources for better accuracy
 API_KEYS = {
-    'waqi': 'c294968cd8d66811cae8a5cddb3928cf4b7ff695', 
+    'waqi': WAQI_API_KEY, 
     'openweather': 'your_openweather_key_here'  # Get from https://openweathermap.org/api for back up
 }
 

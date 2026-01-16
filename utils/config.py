@@ -16,7 +16,7 @@ APP_CONFIG = {
 API_CONFIG = {
     'waqi': {
         'base_url': 'https://api.waqi.info',
-        'api_key': os.getenv('WAQI_API_KEY', 'c294968cd8d66811cae8a5cddb3928cf4b7ff695'),
+        'api_key': os.getenv('WAQI_API_KEY'),
         'timeout': 10,
     },
     'openweather': {

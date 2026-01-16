@@ -32,7 +32,7 @@ class AQIDataManager:
         
         # API Keys - Users should set these in environment or config
         self.api_keys = {
-            'waqi': os.getenv('WAQI_API_KEY', 'c294968cd8d66811cae8a5cddb3928cf4b7ff695'),
+            'waqi': os.getenv('WAQI_API_KEY'),
             'openweather': os.getenv('OPENWEATHER_API_KEY', 'demo')
         }
         
