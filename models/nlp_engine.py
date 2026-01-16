@@ -868,65 +868,65 @@ Ask me about: safety, activities, health impacts, best times, or protection tips
             
             dominant = max(pollutants.items(), key=lambda x: x[1])
             pollutant_name = dominant[0].upper()
-        
-        # AQI-based tips
-        if aqi > 250:
-            tips.extend([
-                f"🚨 EMERGENCY: AQI {int(aqi)} is hazardous. Seal all windows and use HEPA air purifiers.",
-                f"🏥 Health Alert: Monitor for symptoms - chest pain, irregular heartbeat, or severe coughing.",
-                f"😷 Protection: N95/N99 masks are MANDATORY for any outdoor exposure.",
-                f"💊 Medication: Have emergency medications and doctor contact ready."
-            ])
-        elif aqi > 200:
-            tips.extend([
-                f"⚠️ VERY UNHEALTHY: Avoid all outdoor activities. AQI is {int(aqi)}.",
-                f"🪟 Indoor Air: Keep windows closed. Run air purifiers on high.",
-                f"🚫 Exercise: NO outdoor exercise. Indoor activities only.",
-                f"👥 Check on Others: Call vulnerable family members - children, elderly."
-            ])
-        elif aqi > 150:
-            tips.extend([
-                f"🔴 UNHEALTHY: Limit outdoor time. Current AQI: {int(aqi)}.",
-                f"😷 Masks: Wear N95 masks for outdoor errands.",
-                f"🏃 Exercise: Postpone intense outdoor workouts.",
-                f"💧 Hydration: Drink extra water to help flush pollutants."
-            ])
-        elif aqi > 100:
-            tips.extend([
-                f"🟡 MODERATE: Sensitive groups should reduce prolonged exposure (AQI: {int(aqi)}).",
-                f"⏱️ Timing: Exercise during early morning when AQI is typically lower.",
-                f"😷 Optional: Consider masks during extended outdoor activities."
-            ])
-        else:
-            tips.extend([
-                f"✅ EXCELLENT: Perfect air quality (AQI: {int(aqi)}). Enjoy outdoor activities!",
-                f"🏃 Exercise: Great conditions for running, cycling, and sports.",
-                f"🌳 Nature: Ideal time for parks, hiking, and outdoor recreation."
-            ])
             
-        # Pollutant-specific tips
-        if pollutant_name == 'PM25' and dominant[1] > 50:
-            tips.append(f"⚠️ PM2.5 Alert: Fine particles at {int(dominant[1])} µg/m³. These penetrate deep into lungs.")
-        elif pollutant_name == 'O3' and dominant[1] > 60:
-            tips.append(f"☀️ Ozone Alert: Avoid afternoon sun. Ozone peaks between 2-6 PM.")
-        elif pollutant_name == 'NO2' and dominant[1] > 40:
-            tips.append(f"🚗 Traffic Pollution: High NO₂ from vehicles. Avoid busy roads.")
+            # AQI-based tips
+            if aqi > 250:
+                tips.extend([
+                    f"🚨 EMERGENCY: AQI {int(aqi)} is hazardous. Seal all windows and use HEPA air purifiers.",
+                    f"🏥 Health Alert: Monitor for symptoms - chest pain, irregular heartbeat, or severe coughing.",
+                    f"😷 Protection: N95/N99 masks are MANDATORY for any outdoor exposure.",
+                    f"💊 Medication: Have emergency medications and doctor contact ready."
+                ])
+            elif aqi > 200:
+                tips.extend([
+                    f"⚠️ VERY UNHEALTHY: Avoid all outdoor activities. AQI is {int(aqi)}.",
+                    f"🪟 Indoor Air: Keep windows closed. Run air purifiers on high.",
+                    f"🚫 Exercise: NO outdoor exercise. Indoor activities only.",
+                    f"👥 Check on Others: Call vulnerable family members - children, elderly."
+                ])
+            elif aqi > 150:
+                tips.extend([
+                    f"🔴 UNHEALTHY: Limit outdoor time. Current AQI: {int(aqi)}.",
+                    f"😷 Masks: Wear N95 masks for outdoor errands.",
+                    f"🏃 Exercise: Postpone intense outdoor workouts.",
+                    f"💧 Hydration: Drink extra water to help flush pollutants."
+                ])
+            elif aqi > 100:
+                tips.extend([
+                    f"🟡 MODERATE: Sensitive groups should reduce prolonged exposure (AQI: {int(aqi)}).",
+                    f"⏱️ Timing: Exercise during early morning when AQI is typically lower.",
+                    f"😷 Optional: Consider masks during extended outdoor activities."
+                ])
+            else:
+                tips.extend([
+                    f"✅ EXCELLENT: Perfect air quality (AQI: {int(aqi)}). Enjoy outdoor activities!",
+                    f"🏃 Exercise: Great conditions for running, cycling, and sports.",
+                    f"🌳 Nature: Ideal time for parks, hiking, and outdoor recreation."
+                ])
+                
+            # Pollutant-specific tips
+            if pollutant_name == 'PM25' and dominant[1] > 50:
+                tips.append(f"⚠️ PM2.5 Alert: Fine particles at {int(dominant[1])} µg/m³. These penetrate deep into lungs.")
+            elif pollutant_name == 'O3' and dominant[1] > 60:
+                tips.append(f"☀️ Ozone Alert: Avoid afternoon sun. Ozone peaks between 2-6 PM.")
+            elif pollutant_name == 'NO2' and dominant[1] > 40:
+                tips.append(f"🚗 Traffic Pollution: High NO₂ from vehicles. Avoid busy roads.")
+                
+            # User-specific tips
+            age = user_profile.get('age', 30)
+            has_respiratory = user_profile.get('respiratory_condition', False)
+            has_heart = user_profile.get('heart_condition', False)
             
-        # User-specific tips
-        age = user_profile.get('age', 30)
-        has_respiratory = user_profile.get('respiratory_condition', False)
-        has_heart = user_profile.get('heart_condition', False)
-        
-        if has_respiratory and aqi > 100:
-            tips.append("🫁 Asthma/COPD: Have rescue inhaler ready. Monitor breathing closely.")
-        if has_heart and aqi > 150:
-            tips.append("❤️ Heart Condition: Avoid exertion. Watch for chest discomfort or fatigue.")
-        if age < 12 and aqi > 100:
-            tips.append("👶 Children: Kids breathe faster - more susceptible. Limit outdoor play.")
-        if age > 65 and aqi > 100:
-            tips.append("👴 Seniors: Elderly are high-risk. Rest frequently, stay hydrated.")
-            
-        # Time-based tips
+            if has_respiratory and aqi > 100:
+                tips.append("🫁 Asthma/COPD: Have rescue inhaler ready. Monitor breathing closely.")
+            if has_heart and aqi > 150:
+                tips.append("❤️ Heart Condition: Avoid exertion. Watch for chest discomfort or fatigue.")
+            if age < 12 and aqi > 100:
+                tips.append("👶 Children: Kids breathe faster - more susceptible. Limit outdoor play.")
+            if age > 65 and aqi > 100:
+                tips.append("👴 Seniors: Elderly are high-risk. Rest frequently, stay hydrated.")
+                
+            # Time-based tips
             hour = datetime.now().hour
             if 6 <= hour <= 9 and aqi < 100:
                 tips.append("🌅 Morning Freshness: Best air quality of the day. Perfect for morning walks!")
@@ -944,7 +944,6 @@ Ask me about: safety, activities, health impacts, best times, or protection tips
                 return ["🟡 Moderate air quality. Limit prolonged exposure.", "⏱️ Exercise during cleaner hours."]
             else:
                 return ["✅ Good air quality. Enjoy outdoor activities!"]
-            return []
 
 
 class SmartQAEngine:
