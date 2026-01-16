@@ -53,6 +53,30 @@ except ImportError:
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
+
+def _ensure_nlp_resources():
+    """Best-effort download of lightweight NLTK/TextBlob corpora.
+
+    This prevents runtime crashes like:
+    """
+    try:
+        import nltk
+
+        resources = {
+            'tokenizers/punkt': 'punkt',
+            'taggers/averaged_perceptron_tagger': 'averaged_perceptron_tagger',
+            'corpora/wordnet': 'wordnet',
+            'corpora/omw-1.4': 'omw-1.4',
+        }
+
+        for path, pkg in resources.items():
+            try:
+                nltk.data.find(path)
+            except LookupError:
+                nltk.download(pkg, quiet=True)
+    except Exception as exc:  # pragma: no cover - best effort only
+        logger.warning(f"NLTK/TextBlob resource setup skipped: {exc}")
+
 # Lightweight model configurations
 LIGHTWEIGHT_MODELS = {
     # ~22MB - Excellent for semantic similarity and understanding
@@ -1869,6 +1893,7 @@ def get_nlp_engine(model_name: str = None, use_transformers: bool = True) -> Hug
     Returns:
         HuggingFaceNLPEngine instance
     """
+    _ensure_nlp_resources()
     global _nlp_engine_instance
     if _nlp_engine_instance is None:
         _nlp_engine_instance = HuggingFaceNLPEngine(
@@ -1880,11 +1905,13 @@ def get_nlp_engine(model_name: str = None, use_transformers: bool = True) -> Hug
 
 def get_nlp_engine_lightweight() -> HuggingFaceNLPEngine:
     """Get NLP engine in lightweight mode (no HuggingFace models)"""
+    _ensure_nlp_resources()
     return HuggingFaceNLPEngine(use_transformers=False)
 
 
 def get_qa_engine() -> QuestionAnsweringEngine:
     """Get or create QA engine instance"""
+    _ensure_nlp_resources()
     global _qa_engine_instance
     if _qa_engine_instance is None:
         _qa_engine_instance = QuestionAnsweringEngine()
@@ -2148,6 +2175,7 @@ _universal_handler_instance = None
 
 def get_universal_query_handler() -> UniversalQueryHandler:
     """Get or create universal query handler instance"""
+    _ensure_nlp_resources()
     global _universal_handler_instance
     if _universal_handler_instance is None:
         _universal_handler_instance = UniversalQueryHandler()

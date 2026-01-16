@@ -1,3 +1,12 @@
+# Auto-download NLTK data on startup (critical for Colab)
+import nltk
+try:
+    for pkg in ["punkt", "averaged_perceptron_tagger", "wordnet", "omw-1.4", "vader_lexicon"]:
+        nltk.data.find(f"tokenizers/{pkg}" if pkg == "punkt" else f"corpora/{pkg}" if pkg in ["omw-1.4", "vader_lexicon"] else f"taggers/{pkg}")
+except:
+    for pkg in ["punkt", "averaged_perceptron_tagger", "wordnet", "omw-1.4"]:
+        nltk.download(pkg, quiet=True)
+
 import streamlit as st
 import plotly.graph_objects as go
 import plotly.express as px
