@@ -950,8 +950,8 @@ class SmartQAEngine:
         # Intent patterns with semantic variations
         self.intent_patterns = {
             'safety': {
-                'keywords': ['safe', 'danger', 'risk', 'harm', 'okay', 'fine', 'alright', 'harmful', 'hazardous', 'hazard', 'unsafe', 'risky', 'bad', 'good', 'terrible', 'awful', 'toxic'],
-                'phrases': ['is it safe', 'can i go', 'should i go', 'am i safe', 'is it okay', 'is it fine', 'dangerous to', 'risky to', 'is it hazardous', 'hazardous outside', 'is it bad', 'is it good', 'safe outside', 'unsafe outside', 'go outside', 'step outside'],
+                'keywords': ['safe', 'danger', 'risk', 'harm', 'okay', 'fine', 'alright', 'harmful', 'hazardous', 'hazard', 'unsafe', 'risky', 'bad', 'good', 'terrible', 'awful', 'toxic', 'children', 'child', 'kids', 'kid'],
+                'phrases': ['is it safe', 'safe for', 'can i go', 'should i go', 'am i safe', 'is it okay', 'is it fine', 'dangerous to', 'risky to', 'is it hazardous', 'hazardous outside', 'is it bad', 'is it good', 'safe outside', 'unsafe outside', 'go outside', 'step outside', 'safe for children', 'safe for kids'],
                 'semantic_score': 1.0
             },
             'activity': {
@@ -975,8 +975,8 @@ class SmartQAEngine:
                 'semantic_score': 1.0
             },
             'explanation': {
-                'keywords': ['what', 'why', 'how', 'explain', 'meaning', 'definition', 'understand', 'describe', 'mean'],
-                'phrases': ['what is aqi', 'what does', 'how does', 'why is', 'explain the', 'tell me about', 'what are', 'what is pm', 'what is ozone'],
+                'keywords': ['what', 'why', 'how', 'explain', 'meaning', 'definition', 'understand', 'describe', 'mean', 'pm2.5', 'pm25', 'pm10', 'ozone', 'pollutant'],
+                'phrases': ['what is aqi', 'what does', 'how does', 'why is', 'explain the', 'tell me about', 'what are', 'what is pm', 'what is ozone', 'what is pm2.5', 'what is pm25', 'what is pm10'],
                 'semantic_score': 1.0
             },
             'recommendation': {
@@ -1449,6 +1449,9 @@ class SmartQAEngine:
         """Generate safety-related answer"""
         question_lower = question.lower()
         
+        # Check if asking about children/kids
+        is_children_question = any(word in question_lower for word in ['children', 'child', 'kids', 'kid', 'baby', 'toddler'])
+        
         # Check for specific activity in question
         activities = {
             'run': 'running', 'jog': 'jogging', 'walk': 'walking',
@@ -1463,6 +1466,15 @@ class SmartQAEngine:
                 break
         
         if aqi <= 50:
+            if is_children_question:
+                return f"""✅ Yes, perfectly safe for children!
+
+With AQI at {aqi} ({ctx['category']}), the air quality is excellent. Children can:
+• Play outside freely
+• Participate in sports and outdoor activities
+• No restrictions needed
+
+👶 Great day for outdoor play! No precautions needed."""
             if specific_activity:
                 return f"""✅ Yes, absolutely safe for {specific_activity}!
 
@@ -1480,6 +1492,17 @@ Current AQI is {aqi} ({ctx['category']}) - excellent air quality. It's safe to:
 No special precautions needed today!"""
         
         elif aqi <= 100:
+            if is_children_question:
+                return f"""🟡 Generally safe for children
+
+AQI is {aqi} ({ctx['category']}). Most children can play outside normally.
+
+⚠️ For children with asthma or respiratory issues:
+• Limit very strenuous outdoor play
+• Watch for any breathing difficulty
+• Take breaks during prolonged activities
+
+👍 Overall, normal outdoor play is fine for healthy children."""
             if specific_activity:
                 return f"""🟡 Generally safe for {specific_activity}
 
@@ -1496,6 +1519,16 @@ Sensitive groups (asthma, elderly, children, heart conditions) should:
 • Take breaks if any discomfort"""
         
         elif aqi <= 150:
+            if is_children_question:
+                return f"""🟠 Caution for children (AQI: {aqi})
+
+⚠️ Children should limit outdoor activities:
+• Keep outdoor play short (under 30 minutes)
+• Avoid strenuous activities like running or sports
+• Watch for coughing or breathing difficulty
+• Move activities indoors when possible
+
+👶 Children's lungs are developing - they're more sensitive to poor air."""
             return f"""🟠 Caution Advised (AQI: {aqi})
 
 {'Sensitive groups should avoid ' + specific_activity if specific_activity else 'Not ideal for prolonged outdoor exposure'}.
@@ -1506,6 +1539,16 @@ Sensitive groups: Stay indoors, use indoor alternatives
 😷 Consider wearing a mask if you must go outside."""
         
         elif aqi <= 200:
+            if is_children_question:
+                return f"""🔴 Not safe for children outdoors (AQI: {aqi})
+
+❌ Keep children inside:
+• Cancel outdoor play and recess
+• No outdoor sports or activities
+• Keep windows closed
+• Use air purifiers indoors if available
+
+👶 Children are especially vulnerable at this AQI level. Indoor play only!"""
             return f"""🔴 Not Safe for Outdoor Activities (AQI: {aqi})
 
 {'Avoid ' + specific_activity + ' completely' if specific_activity else 'Everyone should limit outdoor exposure'}.
@@ -1516,6 +1559,17 @@ Everyone may experience health effects. Stay indoors when possible.
 😷 N95 mask required for essential outdoor tasks"""
         
         else:
+            if is_children_question:
+                return f"""⚫ HAZARDOUS for children! (AQI: {aqi})
+
+🚨 KEEP CHILDREN INDOORS:
+• Do NOT let children go outside
+• Close all windows and doors
+• Use air purifiers on high
+• Watch for breathing problems, coughing
+• Seek medical help if symptoms appear
+
+👶 This is a health emergency. Children must stay inside!"""
             return f"""⚫ HAZARDOUS - Stay Indoors! (AQI: {aqi})
 
 {'DO NOT ' + specific_activity if specific_activity else 'Avoid ALL outdoor activities'}!

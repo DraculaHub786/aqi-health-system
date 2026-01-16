@@ -881,38 +881,53 @@ def main():
         else:
             st.error("🚨 Poor air quality! Follow these tips carefully:")
         
-        with st.spinner("Getting tips for current conditions..."):
-            tips = nlp_engine.generate_personalized_tips(
-                aqi,
-                pollutants,
-                user_profile,
-                user_input['location']
-            )
-            
-            # Display tips in a more engaging way
-            tip_cols = st.columns(2)
-            for i, tip in enumerate(tips):
-                with tip_cols[i % 2]:
-                    # Add priority indicator based on AQI
-                    if aqi > 150 and i < 2:
-                        st.markdown(f'<div class="tip-box" style="border-left: 4px solid #dc3545; background: #fff5f5;">🔴 {tip}</div>', unsafe_allow_html=True)
-                    elif aqi > 100 and i < 3:
-                        st.markdown(f'<div class="tip-box" style="border-left: 4px solid #ffc107;">🟡 {tip}</div>', unsafe_allow_html=True)
-                    else:
-                        st.markdown(f'<div class="tip-box">{tip}</div>', unsafe_allow_html=True)
+        try:
+            with st.spinner("Getting tips for current conditions..."):
+                tips = nlp_engine.generate_personalized_tips(
+                    aqi,
+                    pollutants,
+                    user_profile,
+                    user_input['location']
+                )
+                
+                if tips and len(tips) > 0:
+                    # Display tips in a more engaging way
+                    tip_cols = st.columns(2)
+                    for i, tip in enumerate(tips):
+                        with tip_cols[i % 2]:
+                            # Add priority indicator based on AQI
+                            if aqi > 150 and i < 2:
+                                st.markdown(f'<div class="tip-box" style="border-left: 4px solid #dc3545; background: #fff5f5;">🔴 {tip}</div>', unsafe_allow_html=True)
+                            elif aqi > 100 and i < 3:
+                                st.markdown(f'<div class="tip-box" style="border-left: 4px solid #ffc107;">🟡 {tip}</div>', unsafe_allow_html=True)
+                            else:
+                                st.markdown(f'<div class="tip-box">{tip}</div>', unsafe_allow_html=True)
+                else:
+                    st.warning("⚠️ Unable to generate health tips at this time.")
+        except Exception as e:
+            st.error(f"❌ Error generating health tips: {str(e)}")
+            logger.error(f"Health tips error: {e}", exc_info=True)
         
         # Historical data
         st.markdown("---")
         st.markdown("### 📊 How Has Air Quality Changed?")
         
-        historical_data = data_manager.get_historical_data(user_input['location'], hours=24)
-        
-        if historical_data and len(historical_data) > 2:
-            fig_history = create_historical_chart(historical_data)
-            if fig_history:
-                st.plotly_chart(fig_history, use_container_width=True)
-        else:
-            st.info("📝 Historical data will appear here as you check AQI over time.")
+        try:
+            historical_data = data_manager.get_historical_data(user_input['location'], hours=24)
+            
+            if historical_data and len(historical_data) > 2:
+                fig_history = create_historical_chart(historical_data)
+                if fig_history:
+                    st.plotly_chart(fig_history, use_container_width=True)
+                else:
+                    st.warning("⚠️ Unable to create historical chart.")
+            else:
+                st.info("📝 Historical data will appear here as you check AQI over time.")
+                if user_input.get('show_debug'):
+                    st.caption(f"Debug: Retrieved {len(historical_data) if historical_data else 0} data points")
+        except Exception as e:
+            st.error(f"❌ Error loading historical data: {str(e)}")
+            logger.error(f"Historical data error: {e}", exc_info=True)
         
         # Smart Q&A Section
         st.markdown("---")
@@ -979,46 +994,65 @@ def main():
                 'source': aqi_data.get('source', 'unknown')
             }
             
-            with st.spinner("🤔 Analyzing your question..."):
-                import time
-                time.sleep(0.3)  # Small delay for better UX
-                answer = query_handler.handle_query(question, context_aqi_data)
+            try:
+                with st.spinner("🤔 Analyzing your question..."):
+                    import time
+                    time.sleep(0.3)  # Small delay for better UX
+                    answer = query_handler.handle_query(question, context_aqi_data)
+                
+                # Validate answer structure
+                if not answer or not isinstance(answer, dict):
+                    st.error("❌ Received invalid response from NLP engine.")
+                    if user_input.get('show_debug'):
+                        st.caption(f"Debug: answer type = {type(answer)}, value = {answer}")
+                elif not answer.get('answer'):
+                    st.warning("⚠️ NLP engine didn't generate an answer. Try rephrasing your question.")
+                    if user_input.get('show_debug'):
+                        st.caption(f"Debug: answer keys = {answer.keys()}")
+                else:
+                    # Display answer in a nice format
+                    st.markdown("---")
+                    st.markdown("#### 🤖 AI Response")
+                    
+                    # Answer box with styling
+                    answer_text = str(answer['answer'])
+                    answer_html = f"""
+                    <div style='background: linear-gradient(135deg, #667eea22 0%, #764ba222 100%); 
+                                padding: 20px; border-radius: 15px; margin: 10px 0; 
+                                border-left: 4px solid #667eea;'>
+                        {answer_text.replace(chr(10), '<br>')}
+                    </div>
+                    """
+                    st.markdown(answer_html, unsafe_allow_html=True)
+                    
+                    # Confidence and metadata
+                    confidence_pct = answer.get('confidence', 0.5) * 100
+                    confidence_color = '#27ae60' if confidence_pct >= 80 else '#f39c12' if confidence_pct >= 60 else '#e74c3c'
+                    
+                    col_conf, col_intent, col_topics = st.columns([1, 1, 2])
+                    with col_conf:
+                        st.markdown(f"""
+                        <span style='color: {confidence_color}; font-weight: bold;'>
+                            📊 Confidence: {confidence_pct:.0f}%
+                        </span>
+                        """, unsafe_allow_html=True)
+                    with col_intent:
+                        intent_emoji = {'safety': '🛡️', 'activity': '🏃', 'health': '🏥', 
+                                       'protection': '😷', 'timing': '⏰', 'explanation': '📖',
+                                       'recommendation': '💡', 'comparison': '⚖️', 
+                                       'forecast': '🔮', 'location': '📍',
+                                       'greeting': '👋', 'acknowledgment': '😊', 'help': '🤝'}.get(answer.get('intent') or answer.get('type', ''), '💬')
+                        st.markdown(f"{intent_emoji} Intent: {answer.get('intent', 'general').title()}")
+                    with col_topics:
+                        if answer.get('related_topics'):
+                            st.markdown(f"📚 Related: {', '.join(answer['related_topics'])}")
             
-            # Display answer in a nice format
-            st.markdown("---")
-            st.markdown("#### 🤖 AI Response")
-            
-            # Answer box with styling
-            answer_html = f"""
-            <div style='background: linear-gradient(135deg, #667eea22 0%, #764ba222 100%); 
-                        padding: 20px; border-radius: 15px; margin: 10px 0; 
-                        border-left: 4px solid #667eea;'>
-                {answer['answer'].replace(chr(10), '<br>')}
-            </div>
-            """
-            st.markdown(answer_html, unsafe_allow_html=True)
-            
-            # Confidence and metadata
-            confidence_pct = answer['confidence'] * 100
-            confidence_color = '#27ae60' if confidence_pct >= 80 else '#f39c12' if confidence_pct >= 60 else '#e74c3c'
-            
-            col_conf, col_intent, col_topics = st.columns([1, 1, 2])
-            with col_conf:
-                st.markdown(f"""
-                <span style='color: {confidence_color}; font-weight: bold;'>
-                    📊 Confidence: {confidence_pct:.0f}%
-                </span>
-                """, unsafe_allow_html=True)
-            with col_intent:
-                intent_emoji = {'safety': '🛡️', 'activity': '🏃', 'health': '🏥', 
-                               'protection': '😷', 'timing': '⏰', 'explanation': '📖',
-                               'recommendation': '💡', 'comparison': '⚖️', 
-                               'forecast': '🔮', 'location': '📍',
-                               'greeting': '👋', 'acknowledgment': '😊', 'help': '🤝'}.get(answer.get('intent') or answer.get('type', ''), '💬')
-                st.markdown(f"{intent_emoji} Intent: {answer.get('intent', 'general').title()}")
-            with col_topics:
-                if answer.get('related_topics'):
-                    st.markdown(f"📚 Related: {', '.join(answer['related_topics'])}")
+            except Exception as e:
+                st.error(f"❌ Error processing your question: {str(e)}")
+                logger.error(f"NLP Q&A error for question '{question}': {e}", exc_info=True)
+                if user_input.get('show_debug'):
+                    st.code(f"Exception type: {type(e).__name__}\nDetails: {str(e)}")
+                st.info("💡 Try asking in a different way or use the suggested questions above.")
         
         # Debug info
         if user_input['show_debug']:
