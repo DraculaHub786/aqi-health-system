@@ -1,0 +1,118 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI AQI Health & Activity Planner</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/styles.css') }}">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700&display=swap" rel="stylesheet">
+</head>
+<body>
+    <div class="container">
+        <!-- Header -->
+        <header class="header">
+            <div class="header-content">
+                <div class="logo">
+                    <span class="logo-icon">🌍</span>
+                    <h1>AI AQI Health & Activity Planner</h1>
+                </div>
+                <p class="subtitle">Get personalized health insights and activity recommendations based on real-time air quality</p>
+            </div>
+        </header>
+
+        <!-- User Profile Selection -->
+        <section class="profile-section">
+            <h2>Select Your Profile</h2>
+            <div class="profile-grid">
+                <button class="profile-card active" data-profile="general">
+                    <span class="profile-icon">👤</span>
+                    <span class="profile-label">General Public</span>
+                </button>
+                <button class="profile-card" data-profile="children">
+                    <span class="profile-icon">👶</span>
+                    <span class="profile-label">Children</span>
+                </button>
+                <button class="profile-card" data-profile="elderly">
+                    <span class="profile-icon">👴</span>
+                    <span class="profile-label">Elderly</span>
+                </button>
+                <button class="profile-card" data-profile="workers">
+                    <span class="profile-icon">👷</span>
+                    <span class="profile-label">Outdoor Workers</span>
+                </button>
+            </div>
+        </section>
+
+        <!-- Location Input -->
+        <section class="search-section">
+            <div class="search-container">
+                <input 
+                    type="text" 
+                    id="locationInput" 
+                    placeholder="Enter your city (e.g., Nagpur, Delhi, Mumbai)"
+                    class="location-input"
+                />
+                <button id="checkAQIBtn" class="check-btn">
+                    <span id="btnText">Check AQI</span>
+                    <span id="btnLoader" class="loader hidden"></span>
+                </button>
+            </div>
+        </section>
+
+        <!-- Results Container -->
+        <div id="resultsContainer" class="results-container hidden">
+            <!-- AQI Display Card -->
+            <section class="aqi-card">
+                <div class="aqi-header">
+                    <h2>Current Air Quality</h2>
+                    <span id="timestamp" class="timestamp"></span>
+                </div>
+                <div class="aqi-main">
+                    <div class="aqi-value" id="aqiValue">--</div>
+                    <div class="aqi-category" id="aqiCategory">--</div>
+                    <div class="health-score">
+                        <span>Health Safety Score:</span>
+                        <div class="score-bar">
+                            <div id="scoreBar" class="score-fill"></div>
+                        </div>
+                        <span id="scoreValue">--</span>
+                    </div>
+                </div>
+                <div class="pollutants">
+                    <h3>Pollutant Levels</h3>
+                    <div class="pollutant-grid" id="pollutantGrid"></div>
+                </div>
+            </section>
+
+            <!-- NLP Explanation -->
+            <section class="explanation-card">
+                <h2>🧠 AI Health Impact Analysis</h2>
+                <div id="nlpExplanation" class="explanation-text"></div>
+            </section>
+
+            <!-- Activity Recommendations -->
+            <section class="recommendations-card">
+                <h2>📋 Personalized Activity Recommendations</h2>
+                <div id="recommendationsGrid" class="recommendations-grid"></div>
+            </section>
+
+            <!-- Time Slots -->
+            <section class="timeslots-card">
+                <h2>⏰ Hourly AQI Forecast</h2>
+                <div id="timeSlotsContainer" class="timeslots-container"></div>
+            </section>
+
+            <!-- Health Tips -->
+            <section class="tips-card">
+                <h2>💡 Health Tips</h2>
+                <ul id="healthTips" class="tips-list"></ul>
+            </section>
+        </div>
+
+        <!-- Error Message -->
+        <div id="errorMessage" class="error-message hidden"></div>
+    </div>
+
+    <script src="{{ url_for('static', filename='js/app.js') }}"></script>
+</body>
+</html>

@@ -1,0 +1,11 @@
+City,Country,AQI Value,PM2.5,PM10,NO2,O3
+New York,USA,45,10.5,25.3,18.5,35.2
+Los Angeles,USA,89,22.3,45.6,32.1,68.5
+Chicago,USA,52,12.1,28.7,21.3,42.1
+Houston,USA,67,16.8,35.2,25.6,51.3
+Phoenix,USA,73,18.2,38.9,28.3,58.6
+Delhi,India,178,89.5,145.2,52.3,28.5
+Mumbai,India,156,78.3,132.6,48.7,32.1
+Beijing,China,134,67.4,115.3,45.2,38.9
+Tokyo,Japan,38,8.2,18.5,15.2,45.2
+London,UK,42,9.5,22.1,19.8,38.7
