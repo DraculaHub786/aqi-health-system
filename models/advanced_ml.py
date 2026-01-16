@@ -15,10 +15,6 @@ logger = logging.getLogger(__name__)
 
 
 class AQITimeSeriesPredictor:
-    """
-    Advanced time series prediction using ensemble methods
-    Predicts AQI for next 24 hours with confidence intervals
-    """
     
     def __init__(self, cache_path: str = 'models/cache'):
         self.model = None
@@ -105,19 +101,6 @@ class AQITimeSeriesPredictor:
         hours_ahead: int = 24,
         weather_data: Optional[Dict] = None
     ) -> List[Dict]:
-        """
-        Predict AQI for next N hours with confidence intervals
-        Uses current AQI as the anchor point for realistic predictions
-        
-        Args:
-            current_aqi: Current AQI value
-            pollutants: Dictionary of current pollutant levels
-            hours_ahead: Number of hours to predict
-            weather_data: Optional weather information
-            
-        Returns:
-            List of predictions with timestamps and confidence intervals
-        """
         predictions = []
         current_time = datetime.now()
         
@@ -218,11 +201,6 @@ class AQITimeSeriesPredictor:
 
 
 class HealthRiskClassifier:
-    """
-    Advanced health risk classification using Gradient Boosting
-    Provides personalized risk assessment
-    """
-    
     def __init__(self):
         self.model = GradientBoostingClassifier(
             n_estimators=100,
@@ -287,16 +265,6 @@ class HealthRiskClassifier:
         aqi: float,
         user_profile: Dict
     ) -> Dict:
-        """
-        Classify health risk for user based on ACTUAL AQI
-        
-        Args:
-            aqi: Current AQI value
-            user_profile: User characteristics
-            
-        Returns:
-            Risk classification with probability
-        """
         try:
             # Extract user features
             age = user_profile.get('age', 30)
@@ -391,11 +359,6 @@ class HealthRiskClassifier:
 
 
 class SmartActivityRecommender:
-    """
-    ML-based activity recommendation system
-    Considers AQI, weather, user preferences, and time
-    """
-    
     def __init__(self):
         self.activities = self._load_activity_database()
         
