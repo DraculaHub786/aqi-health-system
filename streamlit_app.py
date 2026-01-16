@@ -891,17 +891,17 @@ def main():
                 )
                 
                 if tips and len(tips) > 0:
-                    # Display tips in a more engaging way
+                    # Display tips using native Streamlit (ngrok-compatible)
                     tip_cols = st.columns(2)
                     for i, tip in enumerate(tips):
                         with tip_cols[i % 2]:
-                            # Add priority indicator based on AQI
+                            # Use native Streamlit containers instead of HTML
                             if aqi > 150 and i < 2:
-                                st.markdown(f'<div class="tip-box" style="border-left: 4px solid #dc3545; background: #fff5f5;">🔴 {tip}</div>', unsafe_allow_html=True)
+                                st.error(f"🔴 {tip}")
                             elif aqi > 100 and i < 3:
-                                st.markdown(f'<div class="tip-box" style="border-left: 4px solid #ffc107;">🟡 {tip}</div>', unsafe_allow_html=True)
+                                st.warning(f"🟡 {tip}")
                             else:
-                                st.markdown(f'<div class="tip-box">{tip}</div>', unsafe_allow_html=True)
+                                st.info(f"💡 {tip}")
                 else:
                     st.warning("⚠️ Unable to generate health tips at this time.")
         except Exception as e:
