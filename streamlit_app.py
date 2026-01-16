@@ -1,11 +1,48 @@
-# Auto-download NLTK data on startup (critical for Colab)
+# Auto-download NLTK & TextBlob data on startup (critical for Colab)
 import nltk
+import ssl
+
+# Handle SSL certificate issue (common in some environments)
 try:
-    for pkg in ["punkt", "averaged_perceptron_tagger", "wordnet", "omw-1.4", "vader_lexicon"]:
-        nltk.data.find(f"tokenizers/{pkg}" if pkg == "punkt" else f"corpora/{pkg}" if pkg in ["omw-1.4", "vader_lexicon"] else f"taggers/{pkg}")
-except:
-    for pkg in ["punkt", "averaged_perceptron_tagger", "wordnet", "omw-1.4"]:
-        nltk.download(pkg, quiet=True)
+    _create_unverified_https_context = ssl._create_unverified_context
+    ssl._create_default_https_context = _create_unverified_https_context
+except AttributeError:
+    pass
+
+# Download required NLTK data
+try:
+    nltk.data.find('tokenizers/punkt')
+except LookupError:
+    nltk.download('punkt', quiet=True)
+
+try:
+    nltk.data.find('taggers/averaged_perceptron_tagger')
+except LookupError:
+    nltk.download('averaged_perceptron_tagger', quiet=True)
+
+try:
+    nltk.data.find('corpora/wordnet')
+except LookupError:
+    nltk.download('wordnet', quiet=True)
+
+try:
+    nltk.data.find('corpora/omw-1.4')
+except LookupError:
+    nltk.download('omw-1.4', quiet=True)
+
+# Download TextBlob corpora
+try:
+    from textblob import TextBlob
+    TextBlob("test").correct()  # Will fail if corpora not present
+except Exception:
+    try:
+        import subprocess
+        subprocess.run(['python', '-m', 'textblob.download_corpora'], 
+                      stdout=subprocess.DEVNULL, 
+                      stderr=subprocess.DEVNULL,
+                      timeout=30)
+    except:
+        pass
 
 import streamlit as st
 import plotly.graph_objects as go

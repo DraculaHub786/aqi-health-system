@@ -1305,8 +1305,8 @@ class SmartQAEngine:
         relevant.sort(key=lambda x: x['score'], reverse=True)
         return relevant[:3]  # Top 3 most relevant
     
-    def _extract_aqi_context(self, context: str) -> Dict:
-        """Extract AQI and other relevant info from context"""
+    def _extract_aqi_context(self, context) -> Dict:
+        """Extract AQI and other relevant info from context (dict or string)"""
         import re
         
         result = {
@@ -1316,22 +1316,32 @@ class SmartQAEngine:
             'pollutant': None
         }
         
+        # If context is a dict, extract directly
+        if isinstance(context, dict):
+            result['aqi'] = context.get('aqi')
+            result['location'] = context.get('location', 'your location')
+            result['pollutant'] = context.get('dominant_pollutant')
+            return result
+        
+        # If context is a string, parse it
+        context_str = str(context)
+        
         # Extract AQI number - handles "Current AQI in X is 85" format
-        aqi_match = re.search(r'aqi.*?is\s+([0-9]+)', context.lower())
+        aqi_match = re.search(r'aqi.*?is\s+([0-9]+)', context_str.lower())
         if aqi_match:
             result['aqi'] = int(aqi_match.group(1))
         
         # Extract category
         categories = ['good', 'moderate', 'unhealthy', 'hazardous', 'very unhealthy']
         for cat in categories:
-            if cat in context.lower():
+            if cat in context_str.lower():
                 result['category'] = cat.title()
                 break
         
         # Extract pollutant
         pollutants = ['pm25', 'pm2.5', 'pm10', 'ozone', 'o3', 'no2', 'so2', 'co']
         for p in pollutants:
-            if p in context.lower():
+            if p in context_str.lower():
                 result['pollutant'] = p.upper().replace('.', '')
                 break
         
@@ -1356,13 +1366,13 @@ class SmartQAEngine:
         
         return None
     
-    def answer_question(self, question: str, context: str) -> Dict:
+    def answer_question(self, question: str, context) -> Dict:
         """
         Answer any question about air quality using NLP understanding
         
         Args:
             question: User's question (can be any natural language)
-            context: Current AQI context information
+            context: Current AQI context information (dict or string)
             
         Returns:
             Comprehensive answer with confidence and sources
@@ -1371,7 +1381,7 @@ class SmartQAEngine:
         intent_result = self._detect_intent(question)
         intent = intent_result['primary_intent']
         aqi_context = self._extract_aqi_context(context)
-        aqi = aqi_context['aqi'] or 100  # Default if not found
+        aqi = aqi_context['aqi'] if aqi_context['aqi'] is not None else 100  # Default if not found
         
         # Check for pollutant-specific question
         pollutant = self._detect_pollutant_question(question)
@@ -1988,8 +1998,8 @@ class UniversalQueryHandler:
         
         # 2. Use Q&A engine for structured questions
         try:
-            context_str = f"AQI: {aqi}, Location: {aqi_data.get('location', 'unknown')}"
-            qa_result = self.qa_engine.answer_question(query, context_str)
+            # Pass the full aqi_data dict directly instead of converting to string
+            qa_result = self.qa_engine.answer_question(query, aqi_data)
             
             # Enhance with Kaggle data if available
             if self.kaggle_db and aqi:
