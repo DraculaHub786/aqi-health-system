@@ -25,6 +25,10 @@ sentence-transformers>=2.2.2
 # Optional: For faster inference
 optimum>=1.16.0
 
+# Note for Colab users:
+# Total download size for dependencies and models is ~1.3GB (first run)
+# This includes PyTorch, transformers, sentence-transformers, and model weights
+
 # Visualization
 plotly>=5.18.0
 
