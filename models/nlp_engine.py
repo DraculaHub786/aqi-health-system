@@ -2091,6 +2091,75 @@ class UniversalQueryHandler:
         logger.warning("⚠️ [NLP] Using simplified response mode")
         return self._generate_simple_response(query, aqi_data)
     
+    def _generate_simple_response(self, query: str, aqi_data: Dict) -> Dict:
+        """Simple context-aware response when advanced AI unavailable"""
+        aqi = aqi_data.get('aqi', 100)
+        category = self._get_aqi_category(aqi)
+        query_lower = query.lower()
+        
+        # Detect query type and respond
+        if 'safe' in query_lower and ('child' in query_lower or 'kid' in query_lower):
+            if aqi <= 100:
+                answer = f"✅ Yes, it's safe for children to play outside! Current AQI is {int(aqi)} ({category}). Children can enjoy outdoor activities without restrictions. Great conditions for playground time, sports, and fresh air!"
+            else:
+                answer = f"⚠️ Air quality is {category} (AQI: {int(aqi)}). I recommend limiting outdoor play for children today. Keep activities short and preferably indoors. Children breathe faster than adults, making them more susceptible to air pollution."
+        
+        elif 'pm2.5' in query_lower or 'pm 2.5' in query_lower:
+            answer = f"📖 **PM2.5** is particulate matter that's 2.5 micrometers or less in width - about 30 times smaller than a human hair. These tiny particles can penetrate deep into your lungs and bloodstream, causing respiratory problems, heart disease, and asthma. Sources include vehicle emissions, power plants, and wildfires. Current AQI: {int(aqi)} ({category})."
+        
+        elif 'mask' in query_lower or 'protection' in query_lower:
+            if aqi > 150:
+                answer = f"😷 With AQI at {int(aqi)}, I strongly recommend wearing an N95 or N99 mask if you must go outside. These filter 95-99% of particles. Keep windows closed and use air purifiers indoors."
+            elif aqi > 100:
+                answer = f"😷 At AQI {int(aqi)}, consider wearing a mask for prolonged outdoor exposure. N95/KN95 masks are most effective at filtering fine particles."
+            else:
+                answer = f"✅ At current AQI of {int(aqi)}, masks are not necessary for most people. Air quality is acceptable."
+        
+        elif 'exercise' in query_lower or 'jog' in query_lower or 'run' in query_lower:
+            if aqi <= 100:
+                answer = f"🏃 Yes! AQI is {int(aqi)} ({category}). Great conditions for outdoor exercise! Enjoy running, cycling, or sports."
+            elif aqi <= 150:
+                answer = f"⚠️ AQI is {int(aqi)}. I recommend moving your workout indoors or keeping it light and short if outdoors."
+            else:
+                answer = f"🔴 AQI is {int(aqi)} - outdoor exercise is not recommended. Try indoor workouts instead!"
+        
+        elif 'time' in query_lower or 'when' in query_lower:
+            answer = f"⏰ Best times for outdoor activities are typically early morning (5-7 AM) or evening (7-9 PM) when air quality is usually better. Avoid rush hours. Current AQI: {int(aqi)} ({category})."
+        
+        elif 'season' in query_lower or 'weather' in query_lower:
+            from datetime import datetime
+            month = datetime.now().month
+            if month in [12, 1, 2]:
+                season = "winter"
+            elif month in [3, 4, 5]:
+                season = "spring"
+            elif month in [6, 7, 8]:
+                season = "summer"
+            else:
+                season = "fall"
+            answer = f"🌍 It's currently {season}. Current air quality: AQI {int(aqi)} ({category}). Different seasons affect air quality - winter often has higher pollution due to heating, while summer can have ozone issues."
+        
+        elif any(greet in query_lower for greet in ['hi', 'hello', 'hey']):
+            answer = f"👋 Hello! Current air quality is {category} (AQI: {int(aqi)}). How can I help you stay safe and healthy?"
+        
+        elif any(thank in query_lower for thank in ['thank', 'thanks']):
+            answer = "😊 You're welcome! Stay safe and breathe easy!"
+        
+        else:
+            answer = f"📍 Current AQI: {int(aqi)} ({category}). " + (
+                "Air quality is good for all activities!" if aqi <= 50 else
+                "Air quality is acceptable for most people." if aqi <= 100 else
+                "Sensitive groups should limit outdoor activities." if aqi <= 150 else
+                "Everyone should limit outdoor exposure."
+            )
+        
+        return {
+            'answer': answer,
+            'confidence': 0.85,
+            'intent': 'contextual_response',
+            'method': 'simplified_nlp'
+        }
+    
     def _handle_query_fallback(self, query: str, aqi_data: Dict) -> Dict:
         """Fallback query handler when AI is unavailable"""
         aqi = aqi_data.get('aqi', 100)
