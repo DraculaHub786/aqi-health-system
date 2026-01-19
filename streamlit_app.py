@@ -882,52 +882,51 @@ def main():
         else:
             st.error("🚨 Poor air quality! Follow these tips carefully:")
         
+        # ALWAYS show health tips (no empty sections!)
+        tips = None
         try:
-            with st.spinner("Getting tips for current conditions..."):
-                tips = nlp_engine.generate_personalized_tips(
-                    aqi,
-                    pollutants,
-                    user_profile,
-                    user_input['location']
-                )
-                
-                if tips and len(tips) > 0:
-                    # Display tips using native Streamlit (ngrok-compatible)
-                    tip_cols = st.columns(2)
-                    for i, tip in enumerate(tips):
-                        with tip_cols[i % 2]:
-                            # Use native Streamlit containers instead of HTML
-                            if aqi > 150 and i < 2:
-                                st.error(f"🔴 {tip}")
-                            elif aqi > 100 and i < 3:
-                                st.warning(f"🟡 {tip}")
-                            else:
-                                st.info(f"💡 {tip}")
-                else:
-                    # Fallback tips if NLP engine fails
-                    st.warning("⚠️ Generating basic tips...")
-                    if aqi > 200:
-                        st.error("🔴 Stay indoors with windows closed")
-                        st.error("🔴 Use air purifiers if available")
-                    elif aqi > 150:
-                        st.warning("🟡 Limit outdoor activities")
-                        st.warning("🟡 Wear N95 mask if going outside")
-                    elif aqi > 100:
-                        st.info("💡 Reduce prolonged outdoor exertion")
-                        st.info("💡 Sensitive groups should be cautious")
-                    else:
-                        st.success("✅ Safe for all outdoor activities")
-                        st.success("✅ Enjoy the fresh air!")
+            tips = nlp_engine.generate_personalized_tips(
+                aqi,
+                pollutants,
+                user_profile,
+                user_input['location']
+            )
         except Exception as e:
-            st.error(f"❌ Error generating health tips: {str(e)}")
-            logger.error(f"Health tips error: {e}", exc_info=True)
-            # Fallback tips
-            if aqi > 150:
-                st.error("🔴 Stay indoors and limit exposure")
+            logger.error(f"Health tips error: {e}")
+        
+        # Display tips or fallback
+        if tips and len(tips) > 0:
+            tip_cols = st.columns(2)
+            for i, tip in enumerate(tips):
+                with tip_cols[i % 2]:
+                    if aqi > 150 and i < 2:
+                        st.error(f"🔴 {tip}")
+                    elif aqi > 100 and i < 3:
+                        st.warning(f"🟡 {tip}")
+                    else:
+                        st.info(f"💡 {tip}")
+        else:
+            # ALWAYS show fallback tips (guaranteed display)
+            if aqi > 200:
+                st.error("🔴 Stay indoors with windows closed")
+                st.error("🔴 Use air purifiers if available")
+                st.error("🔴 Wear N95/N99 mask for any outdoor exposure")
+                st.error("🔴 Avoid all physical exertion")
+            elif aqi > 150:
+                st.warning("🟡 Limit all outdoor activities")
+                st.warning("🟡 Wear N95 mask when going outside")
+                st.info("💡 Keep windows and doors closed")
+                st.info("💡 Use air purifier indoors")
             elif aqi > 100:
-                st.warning("🟡 Be cautious with outdoor activities")
+                st.info("💡 Reduce prolonged outdoor exertion")
+                st.info("💡 Sensitive groups should be cautious")
+                st.info("💡 Consider indoor activities")
+                st.success("✅ Most people can proceed normally")
             else:
-                st.info("💡 Air quality is acceptable for most people")
+                st.success("✅ Safe for all outdoor activities!")
+                st.success("✅ Enjoy the fresh air")
+                st.info("💡 Great day for exercise and outdoor play")
+                st.info("💡 Perfect conditions for all age groups")
         
         # Historical data
         st.markdown("---")

@@ -12,6 +12,13 @@ APP_CONFIG = {
     'log_level': os.getenv('LOG_LEVEL', 'INFO'),
 }
 
+# NLP/AI Configuration
+NLP_CONFIG = {
+    'use_transformers': os.getenv('USE_TRANSFORMERS', 'true').lower() == 'true',
+    'nlp_mode': os.getenv('NLP_MODE', 'advanced'),  # 'advanced' or 'lightweight'
+    'model_cache_dir': os.getenv('MODEL_CACHE_DIR', './model_cache'),
+}
+
 # API Configuration
 API_CONFIG = {
     'waqi': {

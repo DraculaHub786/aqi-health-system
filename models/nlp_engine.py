@@ -2005,20 +2005,28 @@ class UniversalQueryHandler:
     
     def __init__(self):
         """Initialize universal query handler with Conversational AI"""
-        # Import the new conversational AI
+        from utils.config import NLP_CONFIG
+        
+        # Check if transformers should be used
+        use_transformers = NLP_CONFIG.get('use_transformers', True)
+        
+        if not use_transformers:
+            logger.info("🔧 [NLP] Lightweight mode enabled (transformers disabled in config)")
+            self.conversational_ai = None
+            self.use_advanced_ai = False
+            return
+        
+        # Import the new conversational AI (REQUIRED - no fallback)
         try:
             from models.conversational_ai import get_conversational_ai
             self.conversational_ai = get_conversational_ai()
             self.use_advanced_ai = True
-            logger.info("✓ Advanced Conversational AI loaded successfully")
+            logger.info("✅ [NLP] Advanced Conversational AI loaded successfully")
         except Exception as e:
-            logger.warning(f"Could not load Conversational AI: {e}. Using fallback.")
+            logger.error(f"❌ [NLP] Could not load Conversational AI: {e}")
+            logger.error("Using simplified NLP mode")
             self.conversational_ai = None
             self.use_advanced_ai = False
-        
-        # Keep original engines as fallback
-        self.nlp_engine = get_nlp_engine()
-        self.qa_engine = get_qa_engine()
         
         # Try to load Kaggle dataset manager
         self.kaggle_manager = None
@@ -2067,27 +2075,21 @@ class UniversalQueryHandler:
         if aqi_data is None:
             aqi_data = {'aqi': 100, 'pollutants': {}, 'location': 'your area'}
         
-        # USE ADVANCED CONVERSATIONAL AI if available
+        # USE CONVERSATIONAL AI (primary method)
         if self.use_advanced_ai and self.conversational_ai:
             try:
-                logger.info(f"Processing query with Conversational AI: '{query[:50]}...'")
+                logger.info(f"🤖 [NLP] Processing with Conversational AI: '{query[:50]}...'")
                 response = self.conversational_ai.chat(query, aqi_data)
-                
-                # Enhance with Kaggle data if available
-                if self.kaggle_db and aqi_data.get('aqi'):
-                    aqi = aqi_data.get('aqi')
-                    kaggle_recs = self._get_kaggle_enhancement(aqi, aqi_data.get('pollutants'))
-                    if kaggle_recs:
-                        response['kaggle_data'] = kaggle_recs
-                
+                logger.info(f"✅ [NLP] Response generated successfully")
                 return response
             except Exception as e:
-                logger.error(f"Conversational AI error: {e}. Falling back to basic handler.")
+                logger.error(f"❌ [NLP] Conversational AI error: {e}")
                 import traceback
                 traceback.print_exc()
         
-        # FALLBACK: Use original Q&A engine
-        return self._handle_query_fallback(query, aqi_data)
+        # SIMPLIFIED FALLBACK: Direct context-aware response
+        logger.warning("⚠️ [NLP] Using simplified response mode")
+        return self._generate_simple_response(query, aqi_data)
     
     def _handle_query_fallback(self, query: str, aqi_data: Dict) -> Dict:
         """Fallback query handler when AI is unavailable"""
