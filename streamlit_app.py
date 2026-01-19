@@ -45,6 +45,7 @@ except Exception:
         pass
 
 import streamlit as st
+import logging
 import plotly.graph_objects as go
 import plotly.express as px
 from plotly.subplots import make_subplots
@@ -935,6 +936,13 @@ def main():
         st.caption("Powered by NLP - I can understand natural language questions!")
         
         query_handler = get_universal_query_handler()
+        # Debug: Show if advanced NLP/ML models are loaded
+        try:
+            from models.conversational_ai import get_conversational_ai
+            ai = get_conversational_ai()
+            st.caption(f"[DEBUG] Advanced NLP loaded: {getattr(ai, 'is_advanced_ai_loaded', lambda: False)()}")
+        except Exception as e:
+            st.caption(f"[DEBUG] Advanced NLP not loaded: {e}")
         
         # Initialize session state for Q&A
         if 'pending_qa_question' not in st.session_state:

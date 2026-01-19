@@ -54,12 +54,12 @@ class ConversationalAIEngine:
     def __init__(self, use_gpu: bool = False):
         """
         Initialize conversational AI engine
-        
+        Adds debug logging for model loading and fallback detection
         Args:
             use_gpu: Whether to use GPU acceleration (default: False for compatibility)
         """
         self.device = "cuda" if use_gpu and torch.cuda.is_available() else "cpu"
-        logger.info(f"Initializing Conversational AI on {self.device}")
+        logger.info(f"[ConversationalAIEngine] Initializing Conversational AI on {self.device}")
         
         # Conversation memory (last 10 exchanges)
         self.conversation_history = deque(maxlen=10)
@@ -74,6 +74,14 @@ class ConversationalAIEngine:
         # Sentiment analyzer
         self.sentiment_analyzer = SentimentIntensityAnalyzer() if VADER_AVAILABLE else None
         
+        # Debug: Print which models are loaded
+        logger.info(f"[ConversationalAIEngine] TRANSFORMERS_AVAILABLE: {TRANSFORMERS_AVAILABLE}")
+        logger.info(f"[ConversationalAIEngine] SENTENCE_TRANSFORMERS_AVAILABLE: {SENTENCE_TRANSFORMERS_AVAILABLE}")
+        logger.info(f"[ConversationalAIEngine] VADER_AVAILABLE: {VADER_AVAILABLE}")
+
+    def is_advanced_ai_loaded(self):
+        """Return True if all advanced models are loaded, else False"""
+        return TRANSFORMERS_AVAILABLE and self.qa_pipeline and self.intent_classifier and self.conversational_model
     def _init_models(self):
         """Initialize all transformer models"""
         if not TRANSFORMERS_AVAILABLE:

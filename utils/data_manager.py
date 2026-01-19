@@ -21,15 +21,18 @@ class AQIDataManager:
     def __init__(self, db_path: str = "data/aqi_history.db", cache_ttl: int = 300):
         """
         Initialize data manager
-        
+        Ensures DB file and directory exist (Colab fix)
         Args:
             db_path: Path to SQLite database
             cache_ttl: Cache time-to-live in seconds
         """
         self.db_path = db_path
         self.cache_ttl = cache_ttl
+        # Ensure DB directory exists (Colab/first run fix)
+        db_dir = os.path.dirname(self.db_path)
+        if db_dir and not os.path.exists(db_dir):
+            os.makedirs(db_dir, exist_ok=True)
         self._ensure_database()
-        
         # API Keys - Users should set these in environment or config
         self.api_keys = {
             'waqi': os.getenv('WAQI_API_KEY'),
@@ -37,7 +40,37 @@ class AQIDataManager:
         }
         
     def _ensure_database(self):
-        """Create database and tables if not exist"""
+        """Create database and tables if not exist (Colab/first run safe)"""
+        if not os.path.exists(self.db_path):
+            try:
+                conn = sqlite3.connect(self.db_path)
+                c = conn.cursor()
+                c.execute('''CREATE TABLE IF NOT EXISTS history (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    location TEXT,
+                    aqi INTEGER,
+                    timestamp TEXT
+                )''')
+                conn.commit()
+                conn.close()
+                logger.info(f"[ColabFix] Created new DB at {self.db_path}")
+            except Exception as e:
+                logger.error(f"[ColabFix] Could not create DB: {e}")
+        else:
+            # DB exists, just ensure table exists
+            try:
+                conn = sqlite3.connect(self.db_path)
+                c = conn.cursor()
+                c.execute('''CREATE TABLE IF NOT EXISTS history (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    location TEXT,
+                    aqi INTEGER,
+                    timestamp TEXT
+                )''')
+                conn.commit()
+                conn.close()
+            except Exception as e:
+                logger.error(f"[ColabFix] Could not ensure table: {e}")
         try:
             # Ensure the directory path exists
             db_dir = os.path.dirname(self.db_path)
