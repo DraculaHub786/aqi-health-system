@@ -11,10 +11,19 @@ pandas>=2.0.0
 scikit-learn>=1.3.0
 joblib>=1.3.0
 
-# NLP (Lightweight - no heavy transformers)
+# NLP - Advanced with Transformers for Real AI/ML
 vaderSentiment>=3.3.2
 textblob>=0.18.0
 nltk>=3.8.0
+# Hugging Face Transformers for Real NLP
+transformers>=4.35.0
+torch>=2.1.0
+sentencepiece>=0.1.99
+accelerate>=0.25.0
+# For better conversational AI
+sentence-transformers>=2.2.2
+# Optional: For faster inference
+optimum>=1.16.0
 
 # Visualization
 plotly>=5.18.0

@@ -1999,11 +1999,24 @@ def get_qa_engine() -> QuestionAnsweringEngine:
 class UniversalQueryHandler:
     """
     Universal query handler that responds to EVERY user query
-    Integrates Kaggle datasets, NLP understanding, and comprehensive knowledge base
+    Now powered by Advanced Conversational AI with Transformers
+    Provides human-like, context-aware responses
     """
     
     def __init__(self):
-        """Initialize universal query handler"""
+        """Initialize universal query handler with Conversational AI"""
+        # Import the new conversational AI
+        try:
+            from models.conversational_ai import get_conversational_ai
+            self.conversational_ai = get_conversational_ai()
+            self.use_advanced_ai = True
+            logger.info("✓ Advanced Conversational AI loaded successfully")
+        except Exception as e:
+            logger.warning(f"Could not load Conversational AI: {e}. Using fallback.")
+            self.conversational_ai = None
+            self.use_advanced_ai = False
+        
+        # Keep original engines as fallback
         self.nlp_engine = get_nlp_engine()
         self.qa_engine = get_qa_engine()
         
@@ -2031,25 +2044,17 @@ class UniversalQueryHandler:
                 logger.warning("Kaggle dataset module not available (optional feature)")
             except Exception as e:
                 logger.warning(f"Kaggle integration unavailable: {e}")
-        
-        # Expanded conversation patterns for catching everything
-        self.conversation_patterns = {
-            'greeting': ['hi', 'hello', 'hey', 'good morning', 'good afternoon'],
-            'thanks': ['thank', 'thanks', 'appreciate', 'helpful'],
-            'help': ['help', 'how do', 'what can', 'assist'],
-            'unclear': ['what', 'explain', 'dont understand', "don't get"],
-        }
     
     def handle_query(self, query: str, aqi_data: Dict = None) -> Dict:
         """
-        Handle ANY user query and provide intelligent response
+        Handle ANY user query with Advanced AI - provides human-like responses
         
         Args:
             query: User's question/statement (anything!)
             aqi_data: Current AQI context {aqi, pollutants, location, etc.}
             
         Returns:
-            Comprehensive response with answer, confidence, and suggestions
+            Comprehensive response with answer, confidence, intent, and more
         """
         if not query or not query.strip():
             return {
@@ -2058,22 +2063,38 @@ class UniversalQueryHandler:
                 'type': 'empty_query'
             }
         
-        query_lower = query.lower().strip()
-        
         # Initialize default AQI data if not provided
         if aqi_data is None:
             aqi_data = {'aqi': 100, 'pollutants': {}, 'location': 'your area'}
         
+        # USE ADVANCED CONVERSATIONAL AI if available
+        if self.use_advanced_ai and self.conversational_ai:
+            try:
+                logger.info(f"Processing query with Conversational AI: '{query[:50]}...'")
+                response = self.conversational_ai.chat(query, aqi_data)
+                
+                # Enhance with Kaggle data if available
+                if self.kaggle_db and aqi_data.get('aqi'):
+                    aqi = aqi_data.get('aqi')
+                    kaggle_recs = self._get_kaggle_enhancement(aqi, aqi_data.get('pollutants'))
+                    if kaggle_recs:
+                        response['kaggle_data'] = kaggle_recs
+                
+                return response
+            except Exception as e:
+                logger.error(f"Conversational AI error: {e}. Falling back to basic handler.")
+                import traceback
+                traceback.print_exc()
+        
+        # FALLBACK: Use original Q&A engine
+        return self._handle_query_fallback(query, aqi_data)
+    
+    def _handle_query_fallback(self, query: str, aqi_data: Dict) -> Dict:
+        """Fallback query handler when AI is unavailable"""
         aqi = aqi_data.get('aqi', 100)
         
-        # 1. Handle conversational queries
-        conversation_response = self._handle_conversation(query_lower, aqi)
-        if conversation_response:
-            return conversation_response
-        
-        # 2. Use Q&A engine for structured questions
+        # Try Q&A engine
         try:
-            # Pass the full aqi_data dict directly instead of converting to string
             qa_result = self.qa_engine.answer_question(query, aqi_data)
             
             # Enhance with Kaggle data if available
@@ -2088,7 +2109,7 @@ class UniversalQueryHandler:
         except Exception as e:
             logger.warning(f"Q&A engine error: {e}")
         
-        # 3. Fallback: Use NLP analysis and generate contextual response
+        # Ultimate fallback: Use NLP analysis and generate contextual response
         return self._generate_fallback_response(query, aqi_data)
     
     def _handle_conversation(self, query: str, aqi: float) -> Optional[Dict]:
