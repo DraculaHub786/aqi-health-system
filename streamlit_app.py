@@ -904,10 +904,30 @@ def main():
                             else:
                                 st.info(f"💡 {tip}")
                 else:
-                    st.warning("⚠️ Unable to generate health tips at this time.")
+                    # Fallback tips if NLP engine fails
+                    st.warning("⚠️ Generating basic tips...")
+                    if aqi > 200:
+                        st.error("🔴 Stay indoors with windows closed")
+                        st.error("🔴 Use air purifiers if available")
+                    elif aqi > 150:
+                        st.warning("🟡 Limit outdoor activities")
+                        st.warning("🟡 Wear N95 mask if going outside")
+                    elif aqi > 100:
+                        st.info("💡 Reduce prolonged outdoor exertion")
+                        st.info("💡 Sensitive groups should be cautious")
+                    else:
+                        st.success("✅ Safe for all outdoor activities")
+                        st.success("✅ Enjoy the fresh air!")
         except Exception as e:
             st.error(f"❌ Error generating health tips: {str(e)}")
             logger.error(f"Health tips error: {e}", exc_info=True)
+            # Fallback tips
+            if aqi > 150:
+                st.error("🔴 Stay indoors and limit exposure")
+            elif aqi > 100:
+                st.warning("🟡 Be cautious with outdoor activities")
+            else:
+                st.info("💡 Air quality is acceptable for most people")
         
         # Historical data
         st.markdown("---")
@@ -947,12 +967,11 @@ def main():
         # Initialize session state for Q&A
         if 'pending_qa_question' not in st.session_state:
             st.session_state.pending_qa_question = ''
+        if 'last_processed_question' not in st.session_state:
+            st.session_state.last_processed_question = ''
         
         # Check if there's a pending question to display
         default_value = st.session_state.pending_qa_question
-        if default_value:
-            # Clear the pending question after reading it
-            st.session_state.pending_qa_question = ''
         
         # Suggested questions - these set pending question and rerun
         st.markdown("💡 Try asking:")
@@ -992,7 +1011,11 @@ def main():
             placeholder="Ask anything - e.g., Can I exercise outside? What's the best time to go out? Is it hazardous?"
         )
         
-        if question:
+        # Clear pending question after displaying it
+        if default_value and question == default_value:
+            st.session_state.pending_qa_question = ''
+        
+        if question and question != st.session_state.last_processed_question:
             # Prepare AQI context for universal query handler
             context_aqi_data = {
                 'aqi': aqi,
@@ -1002,10 +1025,11 @@ def main():
                 'source': aqi_data.get('source', 'unknown')
             }
             
+            # Mark question as processed
+            st.session_state.last_processed_question = question
+            
             try:
-                with st.spinner("🤔 Analyzing your question..."):
-                    import time
-                    time.sleep(0.3)  # Small delay for better UX
+                with st.spinner("🤔 Analyzing your question with AI..."):
                     answer = query_handler.handle_query(question, context_aqi_data)
                 
                 # Validate answer structure
