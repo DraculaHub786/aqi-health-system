@@ -422,11 +422,15 @@ def render_sidebar():
     st.sidebar.markdown("---")
     
     # Location input
+    prev_location = st.session_state.get('location', 'Delhi')
     location = st.sidebar.text_input(
         "📍 Enter Location",
-        value=st.session_state.get('location', 'Delhi'),
-        help="Enter city name or coordinates"
+        value=prev_location,
+        help="Enter city name or coordinates",
+        key="location_input"
     )
+    # Detect location change
+    location_changed = location != prev_location
     
     # User profile
     st.sidebar.markdown("### 👤 User Profile")
@@ -471,6 +475,9 @@ def render_sidebar():
     
     # Fetch button
     fetch_data = st.sidebar.button("🔄 Fetch AQI Data", type="primary", use_container_width=True)
+    # If location changed, set a session flag
+    if location_changed:
+        st.session_state.fetch_on_location_change = True
     
     # Settings
     st.sidebar.markdown("---")
@@ -489,7 +496,8 @@ def render_sidebar():
         'outdoor_worker': outdoor_worker,
         'fetch_data': fetch_data,
         'force_refresh': force_refresh,
-        'show_debug': show_debug
+        'show_debug': show_debug,
+        'location_changed': location_changed
     }
 
 
@@ -522,8 +530,9 @@ def main():
         classifier = get_classifier()
         recommender = get_recommender()
     
-    # Fetch data on button click or first load
-    if user_input['fetch_data'] or st.session_state.aqi_data is None:
+    # Fetch data on button click, first load, or location change
+    fetch_on_location_change = st.session_state.pop('fetch_on_location_change', False)
+    if user_input['fetch_data'] or st.session_state.aqi_data is None or fetch_on_location_change:
         with st.spinner(f"Fetching AQI data for {user_input['location']}..."):
             try:
                 aqi_data = data_manager.get_aqi_data(
@@ -932,19 +941,22 @@ def main():
         st.markdown("---")
         st.markdown("### 📊 How Has Air Quality Changed?")
         
+
         try:
             historical_data = data_manager.get_historical_data(user_input['location'], hours=24)
-            
-            if historical_data and len(historical_data) > 2:
+            num_points = len(historical_data) if historical_data else 0
+            if historical_data and num_points > 0:
                 fig_history = create_historical_chart(historical_data)
                 if fig_history:
                     st.plotly_chart(fig_history, use_container_width=True)
+                    if num_points < 3:
+                        st.info(f"ℹ️ Only {num_points} data point{'s' if num_points > 1 else ''} available. Check AQI for this location a few more times to see richer history!")
                 else:
                     st.warning("⚠️ Unable to create historical chart.")
             else:
-                st.info("📝 Historical data will appear here as you check AQI over time.")
-                if user_input.get('show_debug'):
-                    st.caption(f"Debug: Retrieved {len(historical_data) if historical_data else 0} data points")
+                st.info("📝 No historical AQI data yet for this location. Check AQI a few times to build up history!")
+            if user_input.get('show_debug'):
+                st.caption(f"Debug: Retrieved {num_points} data points")
         except Exception as e:
             st.error(f"❌ Error loading historical data: {str(e)}")
             logger.error(f"Historical data error: {e}", exc_info=True)

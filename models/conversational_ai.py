@@ -236,18 +236,19 @@ class ConversationalAIEngine:
         # Route to appropriate handler based on intent
         response = None
         
-        if intent in ['greeting', 'acknowledgment']:
+        # Prioritize pollutant info and protection for queries like 'what is PM2.5' or 'what protection' even if AQI is high
+        if intent == 'pollutant_info':
+            response = self._handle_pollutant_question(user_message, aqi_context)
+        elif intent == 'protection':
+            response = self._handle_protection_query(user_message, aqi_context)
+        elif intent in ['greeting', 'acknowledgment']:
             response = self._handle_social_interaction(user_message, intent, aqi_context)
         elif intent in ['safety', 'health_concern']:
             response = self._handle_safety_query(user_message, aqi_context, sentiment)
-        elif intent == 'pollutant_info':
-            response = self._handle_pollutant_question(user_message, aqi_context)
         elif intent == 'activity_recommendation':
             response = self._handle_activity_query(user_message, aqi_context)
         elif intent == 'timing':
             response = self._handle_timing_query(user_message, aqi_context)
-        elif intent == 'protection':
-            response = self._handle_protection_query(user_message, aqi_context)
         elif intent == 'help':
             response = self._handle_help_request(aqi_context)
         else:
@@ -315,7 +316,7 @@ class ConversationalAIEngine:
         patterns = {
             'greeting': ['hi', 'hello', 'hey', 'good morning', 'good afternoon', 'good evening'],
             'acknowledgment': ['thanks', 'thank you', 'appreciate', 'helpful', 'great'],
-            'safety': ['safe', 'dangerous', 'hazardous', 'risk', 'can i', 'should i', 'okay to'],
+            'safety': ['safe', 'dangerous', 'hazardous', 'risk', 'can i', 'should i', 'okay to', 'child', 'kid', 'children'],
             'health_concern': ['health', 'sick', 'symptom', 'breathe', 'cough', 'affect', 'impact'],
             'pollutant_info': ['what is', 'pm2.5', 'pm10', 'ozone', 'no2', 'so2', 'co', 'explain', 'mean'],
             'activity_recommendation': ['activity', 'do', 'recommend', 'suggest', 'exercise', 'run', 'jog', 'play'],
