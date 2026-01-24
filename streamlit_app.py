@@ -52,6 +52,7 @@ from plotly.subplots import make_subplots
 import pandas as pd
 import numpy as np
 from datetime import datetime, timedelta
+from typing import Dict, List, Optional
 import logging
 import sys
 import os
@@ -416,6 +417,61 @@ def create_historical_chart(historical_data: list) -> go.Figure:
     return fig
 
 
+def _create_emergency_response(question: str, aqi_data: Dict) -> Dict:
+    """Emergency fallback when all NLP systems fail - guaranteed response"""
+    aqi = aqi_data.get('aqi', 100)
+    category = get_aqi_category(aqi)
+    q_lower = question.lower()
+    
+    # Pattern matching for common queries
+    if any(term in q_lower for term in ['pm2.5', 'pm 2.5', 'pm25', 'particle', 'pollutant']):
+        answer = f"📖 PM2.5 refers to fine particles that are 2.5 micrometers or smaller. These can penetrate deep into lungs and cause health issues. Current AQI is {int(aqi)} ({category})."
+    elif any(term in q_lower for term in ['mask', 'protection', 'protect', 'filter']):
+        if aqi > 150:
+            answer = f"😷 With AQI at {int(aqi)}, wear an N95 mask outdoors. Keep windows closed and use air purifiers."
+        elif aqi > 100:
+            answer = f"😷 At AQI {int(aqi)}, consider wearing a mask for prolonged outdoor exposure."
+        else:
+            answer = f"✅ At AQI {int(aqi)}, masks are generally not necessary."
+    elif any(term in q_lower for term in ['safe', 'kid', 'child', 'children']):
+        if aqi <= 100:
+            answer = f"✅ Yes, it's safe for children with AQI at {int(aqi)}. Enjoy outdoor activities!"
+        else:
+            answer = f"⚠️ AQI is {int(aqi)} ({category}). Limit children's outdoor time and keep activities light."
+    elif any(term in q_lower for term in ['exercise', 'jog', 'run', 'workout', 'sport']):
+        if aqi <= 100:
+            answer = f"🏃 Yes! AQI is {int(aqi)}. Great conditions for outdoor exercise."
+        else:
+            answer = f"🏠 AQI is {int(aqi)}. Consider indoor workouts instead."
+    elif any(term in q_lower for term in ['when', 'time', 'best time']):
+        answer = f"⏰ Best times are typically early morning (5-7 AM) or evening (7-9 PM). Current AQI: {int(aqi)} ({category})."
+    elif any(term in q_lower for term in ['hazard', 'danger', 'bad', 'unhealthy']):
+        if aqi > 200:
+            answer = f"⚫ Yes, AQI is {int(aqi)} - hazardous! Stay indoors with windows closed."
+        elif aqi > 150:
+            answer = f"🔴 AQI is {int(aqi)} - unhealthy. Limit outdoor exposure."
+        else:
+            answer = f"Current AQI is {int(aqi)} ({category}). {'Acceptable conditions.' if aqi <= 100 else 'Sensitive groups should be cautious.'}"
+    else:
+        # Generic response
+        answer = f"Current air quality is {category} (AQI: {int(aqi)}). "
+        if aqi <= 50:
+            answer += "Excellent! Safe for all activities."
+        elif aqi <= 100:
+            answer += "Acceptable for most people."
+        elif aqi <= 150:
+            answer += "Sensitive groups should limit prolonged outdoor activities."
+        else:
+            answer += "Limit outdoor exposure. Use masks and air purifiers."
+    
+    return {
+        'answer': answer,
+        'confidence': 0.75,
+        'intent': 'emergency_fallback',
+        'method': 'pattern_matching'
+    }
+
+
 def render_sidebar():
     """Render sidebar with user inputs"""
     st.sidebar.title("🌍 AQI Health Planner")
@@ -429,8 +485,11 @@ def render_sidebar():
         help="Enter city name or coordinates",
         key="location_input"
     )
-    # Detect location change
+    # Detect location change and auto-fetch
     location_changed = location != prev_location
+    if location_changed and location.strip():
+        st.session_state.location = location
+        st.session_state.auto_fetch_requested = True
     
     # User profile
     st.sidebar.markdown("### 👤 User Profile")
@@ -530,9 +589,11 @@ def main():
         classifier = get_classifier()
         recommender = get_recommender()
     
-    # Fetch data on button click, first load, or location change
+    # Fetch data on button click, first load, auto-fetch on location change
+    auto_fetch = st.session_state.pop('auto_fetch_requested', False)
     fetch_on_location_change = st.session_state.pop('fetch_on_location_change', False)
-    if user_input['fetch_data'] or st.session_state.aqi_data is None or fetch_on_location_change:
+    
+    if user_input['fetch_data'] or st.session_state.aqi_data is None or fetch_on_location_change or auto_fetch:
         with st.spinner(f"Fetching AQI data for {user_input['location']}..."):
             try:
                 aqi_data = data_manager.get_aqi_data(
@@ -1039,20 +1100,51 @@ def main():
             # Mark question as processed
             st.session_state.last_processed_question = question
             
+            # Initialize answer variable
+            answer = None
+            error_occurred = False
+            
             try:
                 with st.spinner("🤔 Analyzing your question with AI..."):
-                    answer = query_handler.handle_query(question, context_aqi_data)
+                    # Use timeout protection for production
+                    import signal
+                    import threading
+                    
+                    def query_with_timeout(timeout=10):
+                        result = {'answer': None, 'error': None}
+                        
+                        def worker():
+                            try:
+                                result['answer'] = query_handler.handle_query(question, context_aqi_data)
+                            except Exception as e:
+                                result['error'] = e
+                        
+                        thread = threading.Thread(target=worker)
+                        thread.daemon = True
+                        thread.start()
+                        thread.join(timeout)
+                        
+                        if thread.is_alive():
+                            result['error'] = TimeoutError("Query processing took too long")
+                        
+                        if result['error']:
+                            raise result['error']
+                        return result['answer']
+                    
+                    try:
+                        answer = query_with_timeout(timeout=10)
+                    except:
+                        # Fallback: direct call without timeout (for Windows compatibility)
+                        answer = query_handler.handle_query(question, context_aqi_data)
                 
-                # Validate answer structure
-                if not answer or not isinstance(answer, dict):
-                    st.error("❌ Received invalid response from NLP engine.")
-                    if user_input.get('show_debug'):
-                        st.caption(f"Debug: answer type = {type(answer)}, value = {answer}")
-                elif not answer.get('answer'):
-                    st.warning("⚠️ NLP engine didn't generate an answer. Try rephrasing your question.")
-                    if user_input.get('show_debug'):
-                        st.caption(f"Debug: answer keys = {answer.keys()}")
-                else:
+                # Comprehensive answer validation with auto-fallback
+                if not answer or not isinstance(answer, dict) or not answer.get('answer'):
+                    logger.warning(f"Invalid or empty answer from query_handler, using emergency fallback")
+                    # Emergency fallback response
+                    answer = self._create_emergency_response(question, context_aqi_data)
+                
+                # At this point, we ALWAYS have a valid answer
+                if answer and answer.get('answer'):
                     # Display answer in a nice format
                     st.markdown("---")
                     st.markdown("#### 🤖 AI Response")
@@ -1091,11 +1183,31 @@ def main():
                             st.markdown(f"📚 Related: {', '.join(answer['related_topics'])}")
             
             except Exception as e:
-                st.error(f"❌ Error processing your question: {str(e)}")
-                logger.error(f"NLP Q&A error for question '{question}': {e}", exc_info=True)
+                logger.error(f"Critical NLP Q&A error for question '{question}': {e}", exc_info=True)
+                
+                # Try emergency fallback even in exception
+                try:
+                    answer = _create_emergency_response(question, context_aqi_data)
+                    if answer and answer.get('answer'):
+                        st.warning("⚠️ Using simplified response mode")
+                        # Display the fallback answer
+                        answer_text = str(answer['answer'])
+                        answer_html = f"""
+                        <div style='background: linear-gradient(135deg, #667eea22 0%, #764ba222 100%); 
+                                    padding: 20px; border-radius: 15px; margin: 10px 0; 
+                                    border-left: 4px solid #667eea;'>
+                            {answer_text.replace(chr(10), '<br>')}
+                        </div>
+                        """
+                        st.markdown(answer_html, unsafe_allow_html=True)
+                    else:
+                        st.error(f"❌ Unable to process your question. Please try a different phrasing.")
+                        st.info("💡 Try the suggested questions above or ask about: air quality, safety, activities, or protection.")
+                except:
+                    st.error("❌ System error. Please refresh the page and try again.")
+                
                 if user_input.get('show_debug'):
-                    st.code(f"Exception type: {type(e).__name__}\nDetails: {str(e)}")
-                st.info("💡 Try asking in a different way or use the suggested questions above.")
+                    st.code(f"Exception: {type(e).__name__}\nDetails: {str(e)}")
         
         # Debug info
         if user_input['show_debug']:

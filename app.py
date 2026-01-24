@@ -6,6 +6,14 @@ from datetime import datetime, timedelta
 from ml_model import AQIClassifier, ActivityRecommender, AQIPredictor
 from nlp_engine import NLPExplainer
 import json
+import os
+
+# Load environment variables
+try:
+    from dotenv import load_dotenv
+    load_dotenv()
+except ImportError:
+    pass  # dotenv is optional
 
 app = Flask(__name__)
 CORS(app)
@@ -16,10 +24,14 @@ activity_recommender = ActivityRecommender()
 aqi_predictor = AQIPredictor()
 nlp_explainer = NLPExplainer()
 
+# Load API keys from environment
+WAQI_API_KEY = os.getenv('WAQI_API_KEY', 'c294968cd8d66811cae8a5cddb3928cf4b7ff695')
+OPENWEATHER_API_KEY = os.getenv('OPENWEATHER_API_KEY', 'demo')
+
 # Multiple API sources for better accuracy
 API_KEYS = {
     'waqi': WAQI_API_KEY, 
-    'openweather': 'your_openweather_key_here'  # Get from https://openweathermap.org/api for back up
+    'openweather': OPENWEATHER_API_KEY
 }
 
 @app.route('/')
@@ -420,4 +432,5 @@ if __name__ == '__main__':
     print("🔄 Press CTRL+C to stop the server\n")
     print("=" * 70)
     
-    app.run(debug=True, port=5000, host='0.0.0.0')
+    # Windows-compatible run configuration
+    app.run(debug=True, port=5000, host='0.0.0.0', use_reloader=False)

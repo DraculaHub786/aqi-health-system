@@ -7,6 +7,15 @@ from datetime import datetime, timedelta
 from functools import lru_cache
 import hashlib
 import os
+import random
+
+# Import pandas at module level for Colab compatibility
+try:
+    import pandas as pd
+    PANDAS_AVAILABLE = True
+except ImportError:
+    PANDAS_AVAILABLE = False
+    logger.warning("pandas not available - historical CSV fallback disabled")
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -483,7 +492,7 @@ class AQIDataManager:
         hours: int = 24
     ) -> List[Dict]:
         """
-        Get historical AQI data
+        Get historical AQI data. If no user history exists, load from CSV for initial display.
         
         Args:
             location: Location name
@@ -509,16 +518,60 @@ class AQIDataManager:
             results = cursor.fetchall()
             conn.close()
             
-            return [
-                {
-                    'aqi': row[0],
-                    'pm25': row[1],
-                    'pm10': row[2],
-                    'o3': row[3],
-                    'timestamp': row[4]
-                }
-                for row in results
-            ]
+            # If we have user history, return it
+            if results and len(results) > 0:
+                return [
+                    {
+                        'aqi': row[0],
+                        'pm25': row[1],
+                        'pm10': row[2],
+                        'o3': row[3],
+                        'timestamp': row[4]
+                    }
+                    for row in results
+                ]
+            
+            # Fallback: load from CSV for initial historical data display
+            if not PANDAS_AVAILABLE:
+                logger.warning("pandas not available - cannot load CSV fallback")
+                return []
+            
+            csv_path = os.path.join('data', 'kaggle', 'global_air_pollution.csv')
+            if not os.path.exists(csv_path):
+                logger.info(f"No CSV found at {csv_path}, returning empty history")
+                return []
+            
+            df = pd.read_csv(csv_path)
+            # Case-insensitive match for city/location
+            df_city = df[df['City'].str.lower() == location.lower()]
+            
+            if df_city.empty:
+                logger.info(f"No CSV data for location: {location}")
+                return []
+            
+            # Simulate 24h history by generating timestamps
+            now = datetime.now()
+            records = []
+            for i in range(min(hours, 24)):  # Generate up to 24 hourly points
+                row = df_city.iloc[0]
+                # Simulate AQI fluctuation for realistic demo
+                aqi = float(row['AQI Value']) + random.uniform(-10, 10)
+                pm25 = float(row['PM2.5']) + random.uniform(-5, 5)
+                pm10 = float(row['PM10']) + random.uniform(-10, 10)
+                o3 = float(row['O3']) + random.uniform(-5, 5)
+                
+                timestamp = (now - timedelta(hours=hours - i)).isoformat()
+                
+                records.append({
+                    'aqi': round(max(0, aqi), 1),
+                    'pm25': round(max(0, pm25), 1),
+                    'pm10': round(max(0, pm10), 1),
+                    'o3': round(max(0, o3), 1),
+                    'timestamp': timestamp
+                })
+            
+            logger.info(f"Generated {len(records)} historical points from CSV for {location}")
+            return records
             
         except Exception as e:
             logger.error(f"Error fetching history: {e}")

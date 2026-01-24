@@ -310,18 +310,31 @@ class ConversationalAIEngine:
             return self._classify_intent_fallback(message)
     
     def _classify_intent_fallback(self, message: str) -> Dict:
-        """Fallback intent classification using keywords"""
+        """Fallback intent classification using keywords with priority handling"""
         message_lower = message.lower()
         
+        # Priority checks for "what is" questions - check these FIRST
+        if 'what is' in message_lower or 'what are' in message_lower or 'explain' in message_lower or 'tell me about' in message_lower:
+            # Check for pollutant-related terms
+            pollutant_terms = ['pm2.5', 'pm 2.5', 'pm25', 'pm10', 'pm 10', 'ozone', 'o3', 'no2', 'nitrogen', 'so2', 'sulfur', 'co', 'carbon monoxide', 'pollutant', 'particle']
+            if any(term in message_lower for term in pollutant_terms):
+                return {'intent': 'pollutant_info', 'confidence': 0.95, 'method': 'priority_match'}
+            
+            # Check for protection-related terms
+            protection_terms = ['protection', 'mask', 'protect', 'prevent', 'filter', 'purifier', 'defense', 'safety measure']
+            if any(term in message_lower for term in protection_terms):
+                return {'intent': 'protection', 'confidence': 0.95, 'method': 'priority_match'}
+        
+        # Standard pattern matching for other intents
         patterns = {
             'greeting': ['hi', 'hello', 'hey', 'good morning', 'good afternoon', 'good evening'],
             'acknowledgment': ['thanks', 'thank you', 'appreciate', 'helpful', 'great'],
+            'pollutant_info': ['pm2.5', 'pm 2.5', 'pm25', 'pm10', 'ozone', 'o3', 'no2', 'so2', 'pollutant'],
+            'protection': ['mask', 'protect', 'prevention', 'filter', 'purifier', 'defense'],
             'safety': ['safe', 'dangerous', 'hazardous', 'risk', 'can i', 'should i', 'okay to', 'child', 'kid', 'children'],
             'health_concern': ['health', 'sick', 'symptom', 'breathe', 'cough', 'affect', 'impact'],
-            'pollutant_info': ['what is', 'pm2.5', 'pm10', 'ozone', 'no2', 'so2', 'co', 'explain', 'mean'],
             'activity_recommendation': ['activity', 'do', 'recommend', 'suggest', 'exercise', 'run', 'jog', 'play'],
             'timing': ['when', 'what time', 'best time', 'morning', 'evening', 'afternoon'],
-            'protection': ['mask', 'protect', 'prevent', 'filter', 'purifier', 'defense'],
             'help': ['help', 'how', 'what can', 'assist', 'support']
         }
         
@@ -525,14 +538,20 @@ class ConversationalAIEngine:
         
         # Identify which pollutant user is asking about
         pollutant_mentioned = None
-        for pollutant_key in ['pm25', 'pm10', 'o3', 'no2', 'so2', 'co']:
-            if pollutant_key in message_lower or pollutant_key.replace('o3', 'ozone') in message_lower:
-                pollutant_mentioned = pollutant_key
-                break
         
-        # Handle "PM2.5" specifically as mentioned by user
-        if 'pm2.5' in message_lower or 'pm 2.5' in message_lower:
+        # Check for PM2.5 first (handle various formats)
+        if 'pm2.5' in message_lower or 'pm 2.5' in message_lower or 'pm25' in message_lower:
             pollutant_mentioned = 'pm25'
+        elif 'pm10' in message_lower or 'pm 10' in message_lower:
+            pollutant_mentioned = 'pm10'
+        elif 'ozone' in message_lower or 'o3' in message_lower:
+            pollutant_mentioned = 'o3'
+        elif 'no2' in message_lower or 'nitrogen' in message_lower:
+            pollutant_mentioned = 'no2'
+        elif 'so2' in message_lower or 'sulfur' in message_lower:
+            pollutant_mentioned = 'so2'
+        elif 'co' in message_lower.split() or 'carbon monoxide' in message_lower:  # word boundary for CO
+            pollutant_mentioned = 'co'
         
         if pollutant_mentioned and pollutant_mentioned in self.aqi_knowledge:
             info = self.aqi_knowledge[pollutant_mentioned]
@@ -673,7 +692,7 @@ class ConversationalAIEngine:
         # Mask recommendations
         answer += "**Mask Recommendations:**\n"
         if aqi <= 100:
-            answer += "• Mask not necessary at current levels (AQI: {int(aqi)})\n"
+            answer += f"• Mask not necessary at current levels (AQI: {int(aqi)})\n"
             answer += "• Use only if you're particularly sensitive\n"
         elif aqi <= 150:
             answer += f"• Consider wearing a mask for prolonged outdoor exposure (AQI: {int(aqi)})\n"

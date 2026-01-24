@@ -2056,6 +2056,7 @@ class UniversalQueryHandler:
     def handle_query(self, query: str, aqi_data: Dict = None) -> Dict:
         """
         Handle ANY user query with Advanced AI - provides human-like responses
+        GUARANTEED to return a valid response - never returns None or empty
         
         Args:
             query: User's question/statement (anything!)
@@ -2068,28 +2069,46 @@ class UniversalQueryHandler:
             return {
                 'answer': "I didn't catch that. Could you ask me about air quality, health impacts, or activities?",
                 'confidence': 1.0,
-                'type': 'empty_query'
+                'intent': 'empty_query'
             }
         
         # Initialize default AQI data if not provided
         if aqi_data is None:
             aqi_data = {'aqi': 100, 'pollutants': {}, 'location': 'your area'}
         
-        # USE CONVERSATIONAL AI (primary method)
-        if self.use_advanced_ai and self.conversational_ai:
-            try:
-                logger.info(f"🤖 [NLP] Processing with Conversational AI: '{query[:50]}...'")
-                response = self.conversational_ai.chat(query, aqi_data)
-                logger.info(f"✅ [NLP] Response generated successfully")
-                return response
-            except Exception as e:
-                logger.error(f"❌ [NLP] Conversational AI error: {e}")
-                import traceback
-                traceback.print_exc()
-        
-        # SIMPLIFIED FALLBACK: Direct context-aware response
-        logger.warning("⚠️ [NLP] Using simplified response mode")
-        return self._generate_simple_response(query, aqi_data)
+        try:
+            # USE CONVERSATIONAL AI (primary method)
+            if self.use_advanced_ai and self.conversational_ai:
+                try:
+                    logger.info(f"🤖 [NLP] Processing with Conversational AI: '{query[:50]}...'")
+                    response = self.conversational_ai.chat(query, aqi_data)
+                    
+                    # Validate response
+                    if response and isinstance(response, dict) and response.get('answer'):
+                        logger.info(f"✅ [NLP] Response generated successfully")
+                        return response
+                    else:
+                        logger.warning(f"⚠️ [NLP] Conversational AI returned invalid response, using fallback")
+                except Exception as e:
+                    logger.error(f"❌ [NLP] Conversational AI error: {e}")
+                    import traceback
+                    traceback.print_exc()
+            
+            # SIMPLIFIED FALLBACK: Direct context-aware response
+            logger.warning("⚠️ [NLP] Using simplified response mode")
+            response = self._generate_simple_response(query, aqi_data)
+            
+            # Final validation - ensure we ALWAYS return something valid
+            if not response or not isinstance(response, dict) or not response.get('answer'):
+                logger.error(f"🚨 [NLP] Emergency fallback triggered for query: {query}")
+                return self._emergency_fallback(query, aqi_data)
+            
+            return response
+            
+        except Exception as e:
+            # Absolute last resort
+            logger.critical(f"🚨 [NLP] Complete system failure for query '{query}': {e}")
+            return self._emergency_fallback(query, aqi_data)
     
     def _generate_simple_response(self, query: str, aqi_data: Dict) -> Dict:
         """Simple context-aware response when advanced AI unavailable"""
@@ -2097,14 +2116,37 @@ class UniversalQueryHandler:
         category = self._get_aqi_category(aqi)
         query_lower = query.lower()
         
-        # Detect query type and respond
-        if 'safe' in query_lower and ('child' in query_lower or 'kid' in query_lower):
-            if aqi <= 100:
-                answer = f"✅ Yes, it's safe for children to play outside! Current AQI is {int(aqi)} ({category}). Children can enjoy outdoor activities without restrictions. Great conditions for playground time, sports, and fresh air!"
-            else:
-                answer = f"⚠️ Air quality is {category} (AQI: {int(aqi)}). I recommend limiting outdoor play for children today. Keep activities short and preferably indoors. Children breathe faster than adults, making them more susceptible to air pollution."
+        # PRIORITY: Check for "what is" questions first
+        if 'what is' in query_lower or 'what are' in query_lower or 'explain' in query_lower or 'tell me about' in query_lower:
+            # Pollutant info
+            if 'pm2.5' in query_lower or 'pm 2.5' in query_lower or 'pm25' in query_lower:
+                answer = f"📖 **PM2.5** is particulate matter that's 2.5 micrometers or less in width - about 30 times smaller than a human hair. These tiny particles can penetrate deep into your lungs and bloodstream, causing respiratory problems, heart disease, and asthma. Sources include vehicle emissions, power plants, and wildfires. Current AQI: {int(aqi)} ({category})."
+                return {'answer': answer, 'confidence': 0.95, 'intent': 'pollutant_info', 'method': 'simplified_nlp'}
+            
+            # Protection info
+            elif 'protection' in query_lower or 'mask' in query_lower or 'protect' in query_lower:
+                answer = "😷 **Air Pollution Protection Guide**\n\n"
+                if aqi > 150:
+                    answer += f"With AQI at {int(aqi)}, I strongly recommend:\n"
+                    answer += "• Wear N95 or N99 masks outdoors (filters 95-99% of particles)\n"
+                    answer += "• Keep windows and doors closed\n"
+                    answer += "• Use HEPA air purifiers indoors\n"
+                    answer += "• Avoid outdoor activities\n"
+                    answer += "• Monitor symptoms (coughing, shortness of breath)"
+                elif aqi > 100:
+                    answer += f"At AQI {int(aqi)}, consider these protective measures:\n"
+                    answer += "• Wear N95/KN95 mask for prolonged outdoor exposure\n"
+                    answer += "• Limit outdoor activities\n"
+                    answer += "• Use air purifiers indoors if available"
+                else:
+                    answer += f"At current AQI of {int(aqi)}, basic protection is sufficient:\n"
+                    answer += "• Masks not necessary for most people\n"
+                    answer += "• Good ventilation is adequate\n"
+                    answer += "• Normal activities are safe"
+                return {'answer': answer, 'confidence': 0.95, 'intent': 'protection', 'method': 'simplified_nlp'}
         
-        elif 'pm2.5' in query_lower or 'pm 2.5' in query_lower:
+        # Regular query handling
+        if 'pm2.5' in query_lower or 'pm 2.5' in query_lower:
             answer = f"📖 **PM2.5** is particulate matter that's 2.5 micrometers or less in width - about 30 times smaller than a human hair. These tiny particles can penetrate deep into your lungs and bloodstream, causing respiratory problems, heart disease, and asthma. Sources include vehicle emissions, power plants, and wildfires. Current AQI: {int(aqi)} ({category})."
         
         elif 'mask' in query_lower or 'protection' in query_lower:
@@ -2114,6 +2156,12 @@ class UniversalQueryHandler:
                 answer = f"😷 At AQI {int(aqi)}, consider wearing a mask for prolonged outdoor exposure. N95/KN95 masks are most effective at filtering fine particles."
             else:
                 answer = f"✅ At current AQI of {int(aqi)}, masks are not necessary for most people. Air quality is acceptable."
+        
+        elif 'safe' in query_lower and ('child' in query_lower or 'kid' in query_lower):
+            if aqi <= 100:
+                answer = f"✅ Yes, it's safe for children to play outside! Current AQI is {int(aqi)} ({category}). Children can enjoy outdoor activities without restrictions. Great conditions for playground time, sports, and fresh air!"
+            else:
+                answer = f"⚠️ Air quality is {category} (AQI: {int(aqi)}). I recommend limiting outdoor play for children today. Keep activities short and preferably indoors. Children breathe faster than adults, making them more susceptible to air pollution."
         
         elif 'exercise' in query_lower or 'jog' in query_lower or 'run' in query_lower:
             if aqi <= 100:
@@ -2145,13 +2193,25 @@ class UniversalQueryHandler:
         elif any(thank in query_lower for thank in ['thank', 'thanks']):
             answer = "😊 You're welcome! Stay safe and breathe easy!"
         
+        # Catch-all with comprehensive guidance
         else:
-            answer = f"📍 Current AQI: {int(aqi)} ({category}). " + (
-                "Air quality is good for all activities!" if aqi <= 50 else
-                "Air quality is acceptable for most people." if aqi <= 100 else
-                "Sensitive groups should limit outdoor activities." if aqi <= 150 else
-                "Everyone should limit outdoor exposure."
-            )
+            answer = f"📍 Current AQI: {int(aqi)} ({category}). "
+            if aqi <= 50:
+                answer += "Air quality is excellent! Perfect for all outdoor activities including sports, exercise, and children's play."
+            elif aqi <= 100:
+                answer += "Air quality is acceptable. Most people can enjoy normal activities. Unusually sensitive individuals should watch for symptoms."
+            elif aqi <= 150:
+                answer += "Sensitive groups (children, elderly, those with respiratory conditions) should limit prolonged outdoor activities. General public is less affected."
+            else:
+                answer += "Everyone should limit outdoor exposure. Consider wearing masks, using air purifiers, and staying indoors when possible."
+            
+            # Add helpful suggestions
+            answer += "\\n\\n💡 I can help you with:\\n"
+            answer += "• Safety advice (Is it safe for kids?)\\n"
+            answer += "• Activity recommendations (Can I exercise?)\\n"
+            answer += "• Pollutant information (What is PM2.5?)\\n"
+            answer += "• Protection tips (What mask to wear?)\\n"
+            answer += "• Best timing (When to go outside?)"
         
         return {
             'answer': answer,
@@ -2159,6 +2219,28 @@ class UniversalQueryHandler:
             'intent': 'contextual_response',
             'method': 'simplified_nlp'
         }
+    
+    def _emergency_fallback(self, query: str, aqi_data: Dict) -> Dict:
+        """Absolute last resort - pattern matching only, guaranteed to work"""
+        aqi = aqi_data.get('aqi', 100)
+        category = self._get_aqi_category(aqi)
+        q_lower = query.lower()
+        
+        # Ultra-simple pattern matching
+        if 'pm' in q_lower or 'pollutant' in q_lower or 'particle' in q_lower:
+            return {'answer': f"Air pollutants include PM2.5 (fine particles), PM10, Ozone, and others. Current AQI: {int(aqi)} ({category}).", 'confidence': 0.7, 'intent': 'info'}
+        elif 'mask' in q_lower or 'protect' in q_lower:
+            mask_advice = 'Wear N95 masks and stay indoors.' if aqi > 150 else 'Consider masks for prolonged exposure.' if aqi > 100 else 'Masks generally not needed.'
+            return {'answer': f"{mask_advice} AQI: {int(aqi)}", 'confidence': 0.7, 'intent': 'protection'}
+        elif 'safe' in q_lower or 'kid' in q_lower or 'child' in q_lower:
+            safety_msg = 'Yes, safe for children!' if aqi <= 100 else 'Limit outdoor time for children.'
+            return {'answer': f"{safety_msg} AQI: {int(aqi)} ({category}).", 'confidence': 0.7, 'intent': 'safety'}
+        elif 'exercise' in q_lower or 'run' in q_lower or 'jog' in q_lower:
+            exercise_msg = 'Great for outdoor exercise!' if aqi <= 100 else 'Consider indoor workouts.'
+            return {'answer': f"{exercise_msg} AQI: {int(aqi)}.", 'confidence': 0.7, 'intent': 'activity'}
+        else:
+            general_msg = 'Safe for activities.' if aqi <= 100 else 'Limit outdoor exposure.'
+            return {'answer': f"Current air quality: {category} (AQI: {int(aqi)}). {general_msg}", 'confidence': 0.6, 'intent': 'general'}
     
     def _handle_query_fallback(self, query: str, aqi_data: Dict) -> Dict:
         """Fallback query handler when AI is unavailable"""
