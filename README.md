@@ -334,10 +334,6 @@ pytest tests/ -v --cov=models --cov=utils
 pytest --cov=. --cov-report=html
 ```
 
-## 📝 License
-
-This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
-
 ## 🤝 Contributing
 
 Contributions are welcome! Please feel free to submit a Pull Request.
@@ -371,8 +367,8 @@ Contributions are welcome! Please feel free to submit a Pull Request.
 
 For issues, questions, or suggestions:
 - Open an issue on GitHub
-- Email: your-email@example.com
-- Documentation: [Wiki](https://github.com/your-repo/wiki)
+- Email: afjalansari29162@gmail.com.com
+- Documentation: [Wiki](https://github.com/DraculaHub786/aqi-health-system/wiki)
 
 ## 🙏 Acknowledgments
 
